@@ -6,8 +6,8 @@ A powerful TikTok profile scraper that extracts video metrics and saves them to 
 
 - 🔍 **Profile Scraping**: Extract data from entire TikTok profiles
 - 📋 **Queue System**: Process multiple TikTok profiles in batches of 2 with simultaneous browser windows
-- 📜 **Simultaneous Auto-Scrolling**: Automatically loads ALL videos using threaded infinite scroll
-- 📅 **Manual Navigation**: Manual setup phase for reliable "Oldest" sorting
+- 📜 **Simultaneous Processing**: Auto-scrolling AND video processing both use threading for maximum speed
+- 🤖 **Fully Automated**: No manual intervention required - completely automatic
 - 📊 **Comprehensive Metrics**: Captures views, likes, bookmarks/saves, and comments
 - 💾 **Separate CSV Files**: Saves individual CSV files per profile with username identification
 - 🎯 **Smart Parsing**: Converts TikTok's "142.5K" format to actual numbers
@@ -52,15 +52,15 @@ Enter TikTok URL #4: done
 ### 5. Automated Batch Processing
 - Processes profiles in batches of 2 at a time
 - Opens 2 browser windows simultaneously per batch
-- True simultaneous auto-scrolling using threading to load ALL videos
+- True simultaneous auto-scrolling AND video processing using threading
 - Confirmation prompt between batches
 - Separate CSV file generated per profile
 
-### 6. Manual Navigation Phase (Per Batch)
+### 6. Fully Automated Processing
 - Two browser windows open side by side automatically
-- Click "Oldest" to sort videos chronologically in BOTH windows
-- Wait for pages to load completely
-- Auto-scrolling starts automatically after 10-15 seconds
+- Pages load and auto-scrolling starts immediately
+- No manual intervention required
+- Videos processed simultaneously from both windows
 
 ## 📊 Output
 
@@ -109,10 +109,11 @@ BATCH_SIZE = 3    # Process 3 profiles per batch
 ```
 
 ### Threading
-The auto-scrolling uses Python threading to scroll multiple windows simultaneously:
-- Each window scrolls in its own thread
-- True parallel execution for faster loading
-- Progress messages may appear interleaved (this is normal)
+Both auto-scrolling AND video processing use Python threading for maximum speed:
+- **Auto-scrolling**: Each window scrolls in its own thread
+- **Video processing**: Each profile processes videos in its own thread
+- True parallel execution for both phases
+- Progress messages may appear interleaved (this is normal and shows true simultaneity)
 
 ## 📁 File Structure
 
@@ -138,11 +139,11 @@ tiktok-music-trends/
 ## ⚠️ Important Notes
 
 1. **Parallel Processing**: Opens 2 browser windows simultaneously per batch for faster processing
-2. **Threaded Auto-Scrolling**: Uses multi-threading to scroll both windows simultaneously - no more manual scrolling
+2. **Threaded Processing**: Uses multi-threading for both scrolling AND video extraction simultaneously
 3. **Profile URLs Only**: The scraper works with profile URLs, not individual video URLs
 4. **Chrome Required**: Google Chrome browser must be installed
 5. **ChromeDriver Auto-Managed**: ChromeDriver is automatically downloaded and updated
-6. **Manual Navigation**: You manually navigate to "Oldest" once per batch with automatic 10-15s setup time
+6. **Zero Manual Steps**: Completely automated processing with no user intervention required
 7. **Window Positioning**: Browser windows are automatically positioned side by side for easy management
 8. **Separate CSV Files**: Each profile gets its own timestamped CSV file with username identification
 9. **Scrapes All Videos**: By default processes ALL videos on each profile (configurable)
@@ -159,7 +160,7 @@ tiktok-music-trends/
 **"No videos found"**
 - Make sure the profile is public
 - Check if the URL is correct
-- Make sure you set up "Oldest" sorting within the automatic setup time
+- Videos are processed in the order they appear on the profile (most recent first)
 - Some profiles may have different HTML structure
 
 **Chrome/ChromeDriver Issues**
@@ -221,20 +222,7 @@ Enter TikTok URL #3 (or 'done'/'clear'/'exit'): done
    📄 Navigating @artist2 to profile page...
    ⏱️  Waiting 4.1s for pages to load...
 
-🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸
-🛠️  MANUAL NAVIGATION PHASE - BATCH 1
-🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸
-📋 For EACH browser window, please:
-   1. 📅 Click on 'Oldest' to sort videos chronologically
-   2. 🔄 Wait for the page to fully load
-   3. ✅ Verify you can see video thumbnails
-   4. 🚫 DO NOT scroll manually - auto-scroll will handle it
-
-   🌐 Window 1: @d4vdd
-   🌐 Window 2: @artist2
-
-⏱️  Giving you 12.4s to set up all windows...
-🚀 Auto-scrolling will start automatically!
+🚀 Starting automatic processing for batch 1...
 
 📜 Auto-scrolling ALL windows simultaneously...
    📜 Starting auto-scroll for @d4vdd (Window 1)...
@@ -253,25 +241,28 @@ Enter TikTok URL #3 (or 'done'/'clear'/'exit'): done
 
 ✅ Auto-scrolling complete for all windows!
 
+🎯 Processing videos from ALL windows simultaneously...
+
 ============================================================
 🎯 Processing videos for @d4vdd (Window 1)
 ============================================================
 
-📹 Processing video 1/70...
-   ✅ Found profile view count: 142.5K
-   ⏱️  Pre-click delay: 1.2s
-   ⏱️  Video load delay: 3.7s
-   🔍 Extracting metrics from video page...
-   ✅ Found likes: 52.3K (TikTok selector: browse-like-count)
-   ✅ Found bookmarks: 5198 (TikTok selector: undefined-count)
-   ✅ Found comments: 1049 (TikTok selector: browse-comment-count)
-   👁️  Views: 142.5K (142,500)
-   ❤️  Likes: 52.3K (52,300)
-   🔖 Bookmarks: 5198 (5,198)
-   💬 Comments: 1049 (1,049)
-   ⏱️  Back navigation delay: 2.1s
+============================================================
+🎯 Processing videos for @artist2 (Window 2)
+============================================================
 
-... (processing all 70 videos) ...
+📹 Processing video 1/70...                    ← Window 1 (d4vdd)
+📹 Processing video 1/60...                    ← Window 2 (artist2)
+   ✅ Found profile view count: 142.5K         ← Window 1
+   ✅ Found profile view count: 89.2K          ← Window 2
+   ⏱️  Pre-click delay: 1.2s                   ← Window 1
+   ⏱️  Pre-click delay: 0.9s                   ← Window 2
+   ✅ Found likes: 52.3K (browse-like-count)   ← Window 1
+   ✅ Found likes: 34.1K (browse-like-count)   ← Window 2
+   📹 Processing video 2/70...                 ← Window 1
+   📹 Processing video 2/60...                 ← Window 2
+
+... (both profiles processing simultaneously) ...
 
 💾 Saving data to tiktok_d4vdd_20250628_192349.csv...
 ✅ Saved 70 videos to data/tiktok_d4vdd_20250628_192349.csv

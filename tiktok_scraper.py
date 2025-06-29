@@ -188,6 +188,7 @@ def parse_count(count_str):
 def auto_scroll_and_load_videos(driver):
     """
     Auto-scroll down the page to load all videos using infinite scroll.
+    AGGRESSIVE MODE: Keeps scrolling until absolutely no more videos can be found.
     
     Args:
         driver: Selenium WebDriver instance
@@ -195,64 +196,137 @@ def auto_scroll_and_load_videos(driver):
     Returns:
         list: List of video container elements found
     """
-    print("🔄 Starting auto-scroll to load all videos...")
+    print("🔄 Starting AGGRESSIVE auto-scroll to load ALL videos...")
+    print("   💪 Will keep scrolling until absolutely no more videos found!")
     
-    # Get initial page height
-    last_height = driver.execute_script("return document.body.scrollHeight")
     videos_found = 0
     scroll_attempts = 0
-    max_scroll_attempts = 50  # Prevent infinite scrolling
+    no_new_videos_count = 0
+    no_height_change_count = 0
+    max_no_change_attempts = 10  # More persistent - try 10 times when nothing changes
+    max_no_videos_attempts = 8   # Try 8 times when no new videos found
     
-    while scroll_attempts < max_scroll_attempts:
-        # Scroll down to bottom
+    # Get initial page height and video count
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    
+    while True:  # Infinite loop until we're absolutely sure there are no more videos
+        scroll_attempts += 1
+        
+        # Multiple aggressive scrolling techniques
+        print(f"   📜 Aggressive scroll #{scroll_attempts}: Multiple scroll patterns...")
+        
+        # Technique 1: Scroll to absolute bottom
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(0.5)
         
-        # Wait for new content to load
-        scroll_delay = random_delay(2, 4)
-        print(f"   📜 Scroll {scroll_attempts + 1}: waiting {scroll_delay:.1f}s for content...")
+        # Technique 2: Scroll by viewport height to ensure smooth loading
+        driver.execute_script("window.scrollBy(0, window.innerHeight);")
+        time.sleep(0.3)
         
-        # Check how many videos we have now
-        try:
-            current_videos = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')
-            if not current_videos:
-                current_videos = driver.find_elements(By.CSS_SELECTOR, 'a.css-1mdo0pl-AVideoContainer')
-            
-            current_count = len(current_videos)
-            
-            if current_count > videos_found:
-                print(f"   ✅ Found {current_count - videos_found} new videos (total: {current_count})")
-                videos_found = current_count
-            else:
-                print(f"   ⏸️  No new videos found (still {current_count} total)")
-        except:
-            current_videos = []
-            current_count = 0
+        # Technique 3: Scroll even further down (sometimes content loads below visible area)
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight + 1000);")
         
-        # Calculate new scroll height and compare with last scroll height
+        # Wait for new content to load with variable timing
+        if scroll_attempts % 5 == 0:
+            # Every 5th scroll, wait longer for slower connections
+            scroll_delay = random_delay(3, 6)
+            print(f"   ⏱️  Extended wait ({scroll_attempts}th scroll): {scroll_delay:.1f}s for slow loading...")
+        else:
+            scroll_delay = random_delay(1.5, 3.5)
+            print(f"   ⏱️  Standard wait: {scroll_delay:.1f}s for content...")
+        
+        # Check how many videos we have now using multiple selectors
+        current_videos = []
+        video_selectors = [
+            'a[href*="/video/"]',
+            'a.css-1mdo0pl-AVideoContainer', 
+            '[data-e2e="user-post-item"]',
+            'div[data-e2e="user-post-item-wrapper"]',
+            '.video-feed-item-wrapper'
+        ]
+        
+        for selector in video_selectors:
+            try:
+                found_videos = driver.find_elements(By.CSS_SELECTOR, selector)
+                if len(found_videos) > len(current_videos):
+                    current_videos = found_videos
+                    print(f"   🔍 Using selector: {selector} (found {len(found_videos)} videos)")
+            except:
+                continue
+        
+        current_count = len(current_videos)
+        
+        if current_count > videos_found:
+            new_videos = current_count - videos_found
+            print(f"   ✅ Found {new_videos} NEW videos! (total: {current_count})")
+            videos_found = current_count
+            no_new_videos_count = 0  # Reset counter since we found new videos
+        else:
+            no_new_videos_count += 1
+            print(f"   ⏸️  No new videos found (still {current_count} total) - attempt {no_new_videos_count}/{max_no_videos_attempts}")
+        
+        # Check if page height changed
         new_height = driver.execute_script("return document.body.scrollHeight")
         
         if new_height == last_height:
-            # No new content loaded, try a few more times
-            if scroll_attempts >= 3:
-                print(f"   🏁 Reached end of content after {scroll_attempts + 1} scrolls")
-                break
+            no_height_change_count += 1
+            print(f"   📏 No height change - attempt {no_height_change_count}/{max_no_change_attempts}")
         else:
+            print(f"   📏 Page height increased: {last_height} → {new_height}")
             last_height = new_height
+            no_height_change_count = 0  # Reset counter since height changed
         
-        scroll_attempts += 1
+        # Only stop if BOTH conditions persist for multiple attempts
+        if no_new_videos_count >= max_no_videos_attempts and no_height_change_count >= max_no_change_attempts:
+            print(f"   🏁 STOPPING: No new videos for {no_new_videos_count} attempts AND no height change for {no_height_change_count} attempts")
+            break
         
-        # Safety check - if we have a lot of videos, we might want to stop
-        if videos_found > 1000:
-            print(f"   🛑 Stopping auto-scroll at {videos_found} videos (safety limit)")
+        # Additional check: Try scrolling up a bit then down again (sometimes helps trigger lazy loading)
+        if scroll_attempts % 10 == 0:
+            print(f"   🔄 Scroll technique #{scroll_attempts}: Scroll up then down to trigger lazy loading...")
+            driver.execute_script("window.scrollBy(0, -500);")
+            time.sleep(0.5)
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(1)
+        
+        # Extreme persistence: Keep trying even with very high counts
+        if videos_found > 5000:
+            print(f"   🚀 EXTREME MODE: {videos_found} videos found, but still searching for more...")
+            if scroll_attempts % 20 == 0:
+                print(f"   💪 Extreme persistence check at {videos_found} videos, {scroll_attempts} scrolls...")
+        
+        # Only emergency brake if we've tried WAY too many times
+        if scroll_attempts > 500:
+            print(f"   🛑 EMERGENCY BRAKE: Stopping after {scroll_attempts} scroll attempts (too many attempts)")
             break
     
-    # Final count and return
-    final_videos = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')
-    if not final_videos:
-        final_videos = driver.find_elements(By.CSS_SELECTOR, 'a.css-1mdo0pl-AVideoContainer')
+    # Final comprehensive check using all possible selectors
+    print(f"\n🔍 Final comprehensive video search using all selectors...")
+    final_videos = []
+    all_selectors = [
+        'a[href*="/video/"]',
+        'a.css-1mdo0pl-AVideoContainer',
+        '[data-e2e="user-post-item"]',
+        'div[data-e2e="user-post-item-wrapper"]',
+        '.video-feed-item-wrapper',
+        'div[data-e2e="user-post-item-list"] > div',
+        '.tiktok-video-item'
+    ]
+    
+    for selector in all_selectors:
+        try:
+            found_videos = driver.find_elements(By.CSS_SELECTOR, selector)
+            if len(found_videos) > len(final_videos):
+                final_videos = found_videos
+                print(f"   ✅ Best selector: {selector} with {len(found_videos)} videos")
+        except:
+            continue
     
     final_count = len(final_videos)
-    print(f"🎯 Auto-scroll complete! Found {final_count} total videos after {scroll_attempts} scrolls")
+    print(f"\n🎯 AGGRESSIVE AUTO-SCROLL COMPLETE!")
+    print(f"   📊 Final results: {final_count} total videos found")
+    print(f"   📜 Total scrolls performed: {scroll_attempts}")
+    print(f"   💪 Persistence level: MAXIMUM")
     
     return final_videos
 
@@ -299,26 +373,7 @@ def scrape_tiktok_profile(url):
         delay = random_delay(2, 4)  # Random delay for page load
         print(f"   ⏱️  Waited {delay:.1f}s for page to load")
         
-        # Manual navigation phase
-        print("\n" + "="*60)
-        print("🛠️  MANUAL NAVIGATION PHASE")
-        print("="*60)
-        print("📋 Please perform the following steps manually:")
-        print("   1. 📅 Click on 'Oldest' to sort videos chronologically")
-        print("   2. 🔄 Wait for the page to fully load")
-        print("   3. 📱 Scroll down if needed to see more videos")
-        print("   4. ✅ Verify you can see the video thumbnails")
-        print("\n💡 The browser window is open - you can interact with it now!")
-        print("🚀 Once you're ready, press ENTER to start automated scraping...")
-        
-        # Wait for user input
-        try:
-            input()  # This will pause execution until user presses Enter
-        except KeyboardInterrupt:
-            print("\n👋 Scraping cancelled by user")
-            return video_data
-        
-        print("\n🤖 Starting automated scraping phase...")
+        print("\n🚀 Starting automated processing...")
         delay = random_delay(1.5, 3)  # Random delay before starting
         print(f"   ⏱️  Waited {delay:.1f}s before starting automation")
         
@@ -760,25 +815,7 @@ def process_batch(batch_urls, batch_num, total_batches):
         initial_delay = random_delay(3, 5)
         print(f"   ⏱️  Waiting {initial_delay:.1f}s for pages to load...")
         
-        # Manual navigation phase for all windows
-        print(f"\n" + "🔸" * 70)
-        print(f"🛠️  MANUAL NAVIGATION PHASE - BATCH {batch_num}")
-        print("🔸" * 70)
-        print("📋 For EACH browser window, please:")
-        print("   1. 📅 Click on 'Oldest' to sort videos chronologically")
-        print("   2. 🔄 Wait for the page to fully load")
-        print("   3. ✅ Verify you can see video thumbnails")
-        print("   4. 🚫 DO NOT scroll manually - auto-scroll will handle it")
-        print()
-        for i, url in enumerate(batch_urls):
-            if drivers[i] is not None:
-                username = get_profile_username(url)
-                print(f"   🌐 Window {i+1}: @{username}")
-        
-        # Give user time to manually set up the pages
-        setup_delay = random_delay(10, 15)
-        print(f"\n⏱️  Giving you {setup_delay:.1f}s to set up all windows...")
-        print("🚀 Auto-scrolling will start automatically!")
+        print(f"\n🚀 Starting automatic processing for batch {batch_num}...")
         
         # Auto-scroll all windows simultaneously to load all videos
         print(f"\n📜 Auto-scrolling ALL windows simultaneously...")
@@ -810,14 +847,19 @@ def process_batch(batch_urls, batch_num, total_batches):
         
         print(f"\n✅ Auto-scrolling complete for all windows!")
         
-        # Now process each profile's videos sequentially
-        for i, (url, driver, video_containers) in enumerate(zip(batch_urls, drivers, all_video_containers)):
+        # Now process each profile's videos simultaneously
+        print(f"\n🎯 Processing videos from ALL windows simultaneously...")
+        processing_threads = []
+        thread_results = [None for _ in batch_urls]
+        
+        def process_videos_thread(index, url, driver, video_containers):
+            """Thread function to process videos from a single profile"""
             if driver is None:
-                continue
+                return
                 
             username = get_profile_username(url)
             print(f"\n" + "="*60)
-            print(f"🎯 Processing videos for @{username} (Window {i+1})")
+            print(f"🎯 Processing videos for @{username} (Window {index+1})")
             print("="*60)
             
             # Focus on this window
@@ -829,20 +871,36 @@ def process_batch(batch_urls, batch_num, total_batches):
             if video_data:
                 # Save data for this profile
                 filepath = save_to_csv(video_data, username)
-                batch_results.append({
+                thread_results[index] = {
                     'username': username,
                     'url': url,
                     'videos_count': len(video_data),
                     'filepath': filepath
-                })
+                }
             else:
                 print(f"❌ No data collected for @{username}")
-                batch_results.append({
+                thread_results[index] = {
                     'username': username,
                     'url': url,
                     'videos_count': 0,
                     'filepath': None
-                })
+                }
+        
+        # Start all video processing threads simultaneously
+        for i, (url, driver, video_containers) in enumerate(zip(batch_urls, drivers, all_video_containers)):
+            if driver is not None:
+                thread = threading.Thread(target=process_videos_thread, args=(i, url, driver, video_containers))
+                processing_threads.append(thread)
+                thread.start()
+        
+        # Wait for all video processing threads to complete
+        for thread in processing_threads:
+            thread.join()
+        
+        # Collect results from threads
+        for result in thread_results:
+            if result is not None:
+                batch_results.append(result)
         
     except Exception as e:
         print(f"❌ Error during batch {batch_num} processing: {e}")
@@ -863,6 +921,7 @@ def process_batch(batch_urls, batch_num, total_batches):
 def auto_scroll_and_load_videos_parallel(driver, username, window_num):
     """
     Auto-scroll down the page to load all videos for parallel processing.
+    AGGRESSIVE MODE: Keeps scrolling until absolutely no more videos can be found.
     
     Args:
         driver: Selenium WebDriver instance
@@ -872,62 +931,125 @@ def auto_scroll_and_load_videos_parallel(driver, username, window_num):
     Returns:
         list: List of video container elements found
     """
-    print(f"   🔄 Window {window_num} (@{username}): Starting auto-scroll...")
+    print(f"   🔄 Window {window_num} (@{username}): Starting AGGRESSIVE auto-scroll...")
+    print(f"   💪 Window {window_num} (@{username}): Will keep scrolling until no more videos found!")
     
-    # Get initial page height
-    last_height = driver.execute_script("return document.body.scrollHeight")
     videos_found = 0
     scroll_attempts = 0
-    max_scroll_attempts = 50  # Prevent infinite scrolling
+    no_new_videos_count = 0
+    no_height_change_count = 0
+    max_no_change_attempts = 8   # Slightly less for parallel to avoid conflicts
+    max_no_videos_attempts = 6   # Slightly less for parallel processing
     
-    while scroll_attempts < max_scroll_attempts:
-        # Scroll down to bottom
+    # Get initial page height and video count
+    last_height = driver.execute_script("return document.body.scrollHeight")
+    
+    while True:  # Infinite loop until we're absolutely sure there are no more videos
+        scroll_attempts += 1
+        
+        # Multiple aggressive scrolling techniques (optimized for parallel)
+        # Technique 1: Scroll to absolute bottom
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(0.4)
         
-        # Wait for new content to load
-        scroll_delay = random_delay(1.5, 3)  # Shorter delays for parallel scrolling
+        # Technique 2: Scroll by viewport height to ensure smooth loading
+        driver.execute_script("window.scrollBy(0, window.innerHeight);")
+        time.sleep(0.2)
         
-        # Check how many videos we have now
-        try:
-            current_videos = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')
-            if not current_videos:
-                current_videos = driver.find_elements(By.CSS_SELECTOR, 'a.css-1mdo0pl-AVideoContainer')
-            
-            current_count = len(current_videos)
-            
-            if current_count > videos_found:
-                print(f"   📜 Window {window_num} (@{username}): +{current_count - videos_found} videos (total: {current_count})")
-                videos_found = current_count
-            
-        except:
-            current_videos = []
-            current_count = 0
+        # Technique 3: Scroll even further down
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight + 800);")
         
-        # Calculate new scroll height and compare with last scroll height
+        # Wait for new content to load (shorter delays for parallel processing)
+        if scroll_attempts % 4 == 0:
+            # Every 4th scroll, wait longer
+            scroll_delay = random_delay(2, 4)
+        else:
+            scroll_delay = random_delay(1, 2.5)
+        
+        # Check how many videos we have now using multiple selectors
+        current_videos = []
+        video_selectors = [
+            'a[href*="/video/"]',
+            'a.css-1mdo0pl-AVideoContainer', 
+            '[data-e2e="user-post-item"]',
+            'div[data-e2e="user-post-item-wrapper"]',
+            '.video-feed-item-wrapper'
+        ]
+        
+        for selector in video_selectors:
+            try:
+                found_videos = driver.find_elements(By.CSS_SELECTOR, selector)
+                if len(found_videos) > len(current_videos):
+                    current_videos = found_videos
+            except:
+                continue
+        
+        current_count = len(current_videos)
+        
+        if current_count > videos_found:
+            new_videos = current_count - videos_found
+            print(f"   ✅ Window {window_num} (@{username}): +{new_videos} NEW videos! (total: {current_count})")
+            videos_found = current_count
+            no_new_videos_count = 0  # Reset counter since we found new videos
+        else:
+            no_new_videos_count += 1
+            if no_new_videos_count % 2 == 0:  # Only print every 2nd attempt to reduce noise in parallel
+                print(f"   ⏸️  Window {window_num} (@{username}): No new videos - attempt {no_new_videos_count}/{max_no_videos_attempts}")
+        
+        # Check if page height changed
         new_height = driver.execute_script("return document.body.scrollHeight")
         
         if new_height == last_height:
-            # No new content loaded, try a few more times
-            if scroll_attempts >= 3:
-                print(f"   🏁 Window {window_num} (@{username}): Reached end after {scroll_attempts + 1} scrolls")
-                break
+            no_height_change_count += 1
         else:
             last_height = new_height
+            no_height_change_count = 0  # Reset counter since height changed
         
-        scroll_attempts += 1
+        # Only stop if BOTH conditions persist for multiple attempts
+        if no_new_videos_count >= max_no_videos_attempts and no_height_change_count >= max_no_change_attempts:
+            print(f"   🏁 Window {window_num} (@{username}): STOPPING after {no_new_videos_count} no-video attempts & {no_height_change_count} no-height attempts")
+            break
         
-        # Safety check - if we have a lot of videos, we might want to stop
-        if videos_found > 1000:
-            print(f"   🛑 Window {window_num} (@{username}): Stopping at {videos_found} videos (safety limit)")
+        # Additional check: Try scrolling up a bit then down again (every 8 scrolls for parallel)
+        if scroll_attempts % 8 == 0:
+            driver.execute_script("window.scrollBy(0, -400);")
+            time.sleep(0.3)
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(0.8)
+        
+        # Extreme persistence for parallel processing
+        if videos_found > 3000:  # Lower threshold for parallel to avoid resource issues
+            if scroll_attempts % 15 == 0:
+                print(f"   🚀 Window {window_num} (@{username}): EXTREME MODE - {videos_found} videos, {scroll_attempts} scrolls")
+        
+        # Emergency brake for parallel processing (lower threshold)
+        if scroll_attempts > 300:
+            print(f"   🛑 Window {window_num} (@{username}): EMERGENCY BRAKE after {scroll_attempts} attempts")
             break
     
-    # Final count and return
-    final_videos = driver.find_elements(By.CSS_SELECTOR, 'a[href*="/video/"]')
-    if not final_videos:
-        final_videos = driver.find_elements(By.CSS_SELECTOR, 'a.css-1mdo0pl-AVideoContainer')
+    # Final comprehensive check using all possible selectors
+    final_videos = []
+    all_selectors = [
+        'a[href*="/video/"]',
+        'a.css-1mdo0pl-AVideoContainer',
+        '[data-e2e="user-post-item"]',
+        'div[data-e2e="user-post-item-wrapper"]',
+        '.video-feed-item-wrapper',
+        'div[data-e2e="user-post-item-list"] > div',
+        '.tiktok-video-item'
+    ]
+    
+    for selector in all_selectors:
+        try:
+            found_videos = driver.find_elements(By.CSS_SELECTOR, selector)
+            if len(found_videos) > len(final_videos):
+                final_videos = found_videos
+        except:
+            continue
     
     final_count = len(final_videos)
-    print(f"   🎯 Window {window_num} (@{username}): Complete! {final_count} total videos loaded")
+    print(f"   🎯 Window {window_num} (@{username}): AGGRESSIVE SCROLL COMPLETE!")
+    print(f"      📊 {final_count} total videos found in {scroll_attempts} scrolls")
     
     return final_videos
 
@@ -948,26 +1070,7 @@ def scrape_tiktok_profile_with_driver(driver, url):
         delay = random_delay(2, 4)  # Random delay for page load
         print(f"   ⏱️  Waited {delay:.1f}s for page to load")
         
-        # Manual navigation phase (for first profile only, or if needed)
-        print("\n" + "="*60)
-        print("🛠️  MANUAL NAVIGATION PHASE")
-        print("="*60)
-        print("📋 Please perform the following steps manually:")
-        print("   1. 📅 Click on 'Oldest' to sort videos chronologically")
-        print("   2. 🔄 Wait for the page to fully load")
-        print("   3. 📱 Let auto-scroll load all videos")
-        print("   4. ✅ Verify you can see video thumbnails")
-        print("\n💡 The browser window is open - you can interact with it now!")
-        print("🚀 Once you're ready, press ENTER to start automated scraping...")
-        
-        # Wait for user input
-        try:
-            input()  # This will pause execution until user presses Enter
-        except KeyboardInterrupt:
-            print("\n👋 Scraping cancelled by user")
-            return video_data
-        
-        print("\n🤖 Starting automated scraping phase...")
+        print("\n🚀 Starting automated processing...")
         delay = random_delay(1.5, 3)  # Random delay before starting
         print(f"   ⏱️  Waited {delay:.1f}s before starting automation")
         
