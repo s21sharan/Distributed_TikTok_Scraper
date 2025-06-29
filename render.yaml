@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: tiktok-scraper-coordinator
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: tiktok-scraper-redis
+          property: connectionString
+      - key: DATABASE_URL
+        value: sqlite:///./scraper.db
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: DEBUG
+        value: "False"
+
+  - type: redis
+    name: tiktok-scraper-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru 

@@ -1,0 +1,27 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "backend/Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "always"
+
+[[services]]
+name = "coordinator"
+source = "backend/"
+
+[services.coordinator.variables]
+PORT = "8000"
+REDIS_URL = "${{Redis.REDIS_URL}}"
+DATABASE_URL = "sqlite:///./scraper.db"
+CORS_ORIGINS = "*"
+DEBUG = "False"
+
+[[services]]
+name = "redis"
+image = "redis:7-alpine"
+port = 6379
+
+[services.redis.variables]
+REDIS_PASSWORD = "${{REDIS_PASSWORD}}" 
