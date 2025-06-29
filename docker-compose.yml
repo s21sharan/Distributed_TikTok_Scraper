@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  # Redis for coordination between services
+  redis:
+    image: redis:7-alpine
+    container_name: tiktok_scraper_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - scraper_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Coordinator service (FastAPI backend)
+  coordinator:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tiktok_scraper_coordinator
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=sqlite:///./scraper.db
+      - CORS_ORIGINS=http://localhost:3000,http://frontend:3000
+    volumes:
+      - ./data:/app/data
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - scraper_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend service (React dashboard)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tiktok_scraper_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - coordinator
+    networks:
+      - scraper_network
+
+  # Worker service (can be scaled)
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      - COORDINATOR_HOST=coordinator
+      - COORDINATOR_PORT=8000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - HEADLESS=true
+    volumes:
+      - ./data:/app/data
+      - ./backend:/app
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - scraper_network
+    deploy:
+      replicas: 2
+    profiles:
+      - workers
+
+  # Nginx reverse proxy (production setup)
+  nginx:
+    image: nginx:alpine
+    container_name: tiktok_scraper_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - coordinator
+      - frontend
+    networks:
+      - scraper_network
+    profiles:
+      - production
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  scraper_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 
