@@ -5,9 +5,11 @@ A powerful TikTok profile scraper that extracts video metrics and saves them to 
 ## ✨ Features
 
 - 🔍 **Profile Scraping**: Extract data from entire TikTok profiles
+- 📋 **Queue System**: Process multiple TikTok profiles in batches of 2 with simultaneous browser windows
+- 📜 **Simultaneous Auto-Scrolling**: Automatically loads ALL videos using threaded infinite scroll
 - 📅 **Manual Navigation**: Manual setup phase for reliable "Oldest" sorting
 - 📊 **Comprehensive Metrics**: Captures views, likes, bookmarks/saves, and comments
-- 💾 **CSV Export**: Saves all data to timestamped CSV files
+- 💾 **Separate CSV Files**: Saves individual CSV files per profile with username identification
 - 🎯 **Smart Parsing**: Converts TikTok's "142.5K" format to actual numbers
 - 🚗 **Browser Automation**: Uses Selenium WebDriver for reliable scraping
 - 🔧 **Auto ChromeDriver**: Automatically downloads and manages ChromeDriver
@@ -33,23 +35,40 @@ python3 setup_scraper.py
 python3 tiktok_scraper.py
 ```
 
-### 4. Enter a TikTok Profile URL
+### 4. Build Your URL Queue
+Enter multiple TikTok profile URLs one by one:
 ```
-Enter TikTok URL: https://www.tiktok.com/@d4vdd
+🎵 TikTok Scraper - Queue System
+==================================================
+📋 Enter multiple TikTok URLs to scrape in batch:
+Enter TikTok URL #1: https://www.tiktok.com/@artist1
+Enter TikTok URL #2: https://www.tiktok.com/@artist2  
+Enter TikTok URL #3: https://www.tiktok.com/@artist3
+Enter TikTok URL #4: done
+
+✅ Queue complete! 3 URLs ready for processing.
 ```
 
-### 5. Manual Navigation Phase
-- Browser window opens automatically
-- Click "Oldest" to sort videos chronologically
-- Scroll down if needed to see more videos
-- Press ENTER in terminal when ready to start scraping
+### 5. Automated Batch Processing
+- Processes profiles in batches of 2 at a time
+- Opens 2 browser windows simultaneously per batch
+- True simultaneous auto-scrolling using threading to load ALL videos
+- Confirmation prompt between batches
+- Separate CSV file generated per profile
+
+### 6. Manual Navigation Phase (Per Batch)
+- Two browser windows open side by side automatically
+- Click "Oldest" to sort videos chronologically in BOTH windows
+- Wait for pages to load completely
+- Auto-scrolling starts automatically after 10-15 seconds
 
 ## 📊 Output
 
-The scraper generates CSV files in the `data/` folder with the following columns:
+The scraper generates **separate CSV files** for each profile in the `data/` folder with the following columns:
 
 | Column | Description | Example |
 |--------|-------------|---------|
+| `profile_username` | TikTok profile username | d4vdd |
 | `video_url` | Direct link to the video | https://www.tiktok.com/@d4vdd/video/1234567890 |
 | `views` | View count (parsed) | 142500 |
 | `likes` | Like count (parsed) | 15200 |
@@ -60,6 +79,10 @@ The scraper generates CSV files in the `data/` folder with the following columns
 | `bookmarks_raw` | Original bookmark text | "890" |
 | `comments_raw` | Original comment text | "450" |
 | `scraped_at` | Timestamp | 2024-01-15T10:30:45.123456 |
+
+### File Naming Convention
+- Individual files: `tiktok_username_YYYYMMDD_HHMMSS.csv`
+- Example: `tiktok_d4vdd_20250628_192349.csv`
 
 ## 🔧 Configuration
 
@@ -77,16 +100,32 @@ MAX_VIDEOS_TO_SCRAPE = None  # None = all videos
 MAX_VIDEOS_TO_SCRAPE = 50    # Limit to 50 videos
 ```
 
+### Batch Size
+The scraper processes profiles in batches of 2 by default. To change the batch size, edit the `BATCH_SIZE` variable in `process_url_queue()`:
+```python
+BATCH_SIZE = 2    # Process 2 profiles per batch (default)
+# or
+BATCH_SIZE = 3    # Process 3 profiles per batch
+```
+
+### Threading
+The auto-scrolling uses Python threading to scroll multiple windows simultaneously:
+- Each window scrolls in its own thread
+- True parallel execution for faster loading
+- Progress messages may appear interleaved (this is normal)
+
 ## 📁 File Structure
 
 ```
 tiktok-music-trends/
-├── tiktok_scraper.py          # Main scraper script
+├── tiktok_scraper.py          # Main scraper script with queue system
 ├── setup_scraper.py           # Setup and installation script
 ├── requirements_scraper.txt   # Python dependencies
 ├── README_SCRAPER.md         # This file
-└── data/                     # Output CSV files
-    └── tiktok_scrape_YYYYMMDD_HHMMSS.csv
+└── data/                     # Output CSV files (one per profile)
+    ├── tiktok_artist1_20250628_192349.csv
+    ├── tiktok_artist2_20250628_193425.csv
+    └── tiktok_artist3_20250628_194512.csv
 ```
 
 ## 🎯 Supported URL Formats
@@ -98,16 +137,20 @@ tiktok-music-trends/
 
 ## ⚠️ Important Notes
 
-1. **Profile URLs Only**: The scraper works with profile URLs, not individual video URLs
-2. **Chrome Required**: Google Chrome browser must be installed
-3. **ChromeDriver Auto-Managed**: ChromeDriver is automatically downloaded and updated
-4. **Manual Navigation**: You manually navigate to "Oldest" for best results
-5. **Scrapes All Videos**: By default processes ALL videos on the profile (configurable)
-6. **TikTok's Actual Selectors**: Uses TikTok's real data-e2e selectors (`browse-like-count`, `browse-comment-count`, `undefined-count`)
-7. **Randomized Timing**: Uses random delays (1-4 seconds) between actions to mimic human behavior
-8. **Rate Limiting**: The scraper includes delays to avoid being blocked
-9. **Terms of Service**: Please respect TikTok's terms of service and rate limits
-10. **Public Data Only**: This scraper only accesses publicly available data
+1. **Parallel Processing**: Opens 2 browser windows simultaneously per batch for faster processing
+2. **Threaded Auto-Scrolling**: Uses multi-threading to scroll both windows simultaneously - no more manual scrolling
+3. **Profile URLs Only**: The scraper works with profile URLs, not individual video URLs
+4. **Chrome Required**: Google Chrome browser must be installed
+5. **ChromeDriver Auto-Managed**: ChromeDriver is automatically downloaded and updated
+6. **Manual Navigation**: You manually navigate to "Oldest" once per batch with automatic 10-15s setup time
+7. **Window Positioning**: Browser windows are automatically positioned side by side for easy management
+8. **Separate CSV Files**: Each profile gets its own timestamped CSV file with username identification
+9. **Scrapes All Videos**: By default processes ALL videos on each profile (configurable)
+10. **TikTok's Actual Selectors**: Uses TikTok's real data-e2e selectors (`browse-like-count`, `browse-comment-count`, `undefined-count`)
+11. **Randomized Timing**: Uses random delays (1-4 seconds) between actions to mimic human behavior
+12. **Rate Limiting**: The scraper includes delays to avoid being blocked
+13. **Terms of Service**: Please respect TikTok's terms of service and rate limits
+14. **Public Data Only**: This scraper only accesses publicly available data
 
 ## 🐛 Troubleshooting
 
@@ -116,7 +159,7 @@ tiktok-music-trends/
 **"No videos found"**
 - Make sure the profile is public
 - Check if the URL is correct
-- Try scrolling down manually before pressing ENTER
+- Make sure you set up "Oldest" sorting within the automatic setup time
 - Some profiles may have different HTML structure
 
 **Chrome/ChromeDriver Issues**
@@ -147,37 +190,74 @@ The scraped CSV data can be imported into your TikTok Music Analytics dashboard:
 ## 📈 Sample Output
 
 ```
-🎵 TikTok Scraper - URL Input
-========================================
-Enter TikTok URL: https://www.tiktok.com/@d4vdd
+🎵 TikTok Scraper - Queue System
+==================================================
+📋 Enter multiple TikTok URLs to scrape in batch:
+Enter TikTok URL #1 (or 'done'/'clear'/'exit'): https://www.tiktok.com/@d4vdd
+✅ Added to queue: https://www.tiktok.com/@d4vdd
+Enter TikTok URL #2 (or 'done'/'clear'/'exit'): https://www.tiktok.com/@artist2
+✅ Added to queue: https://www.tiktok.com/@artist2
+Enter TikTok URL #3 (or 'done'/'clear'/'exit'): done
 
-✅ Valid TikTok URL detected: https://www.tiktok.com/@d4vdd
+✅ Queue complete! 2 URLs ready for processing.
 
-🚀 Starting TikTok profile scraping...
-📱 Profile URL: https://www.tiktok.com/@d4vdd
-🌐 Launching browser...
-📄 Navigating to profile...
+🎯 Queue contains 4 URLs to process
 
-============================================================
-🛠️  MANUAL NAVIGATION PHASE
-============================================================
-📋 Please perform the following steps manually:
+🚀 Starting batch processing of 4 profiles...
+📦 Processing in batches of 2 profiles each (2 batches total)
+======================================================================
+
+🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸
+📦 BATCH 1/2 - Processing 2 profiles
+🎯 Profiles 1-2 of 4
+🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸
+   1. @d4vdd: https://www.tiktok.com/@d4vdd
+   2. @artist2: https://www.tiktok.com/@artist2
+
+🌐 Opening 2 browser windows for batch 1...
+   🌐 Opening window 1: @d4vdd
+   📄 Navigating @d4vdd to profile page...
+   🌐 Opening window 2: @artist2
+   📄 Navigating @artist2 to profile page...
+   ⏱️  Waiting 4.1s for pages to load...
+
+🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸
+🛠️  MANUAL NAVIGATION PHASE - BATCH 1
+🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸
+📋 For EACH browser window, please:
    1. 📅 Click on 'Oldest' to sort videos chronologically
    2. 🔄 Wait for the page to fully load
-   3. 📱 Scroll down if needed to see more videos
-   4. ✅ Verify you can see the video thumbnails
+   3. ✅ Verify you can see video thumbnails
+   4. 🚫 DO NOT scroll manually - auto-scroll will handle it
 
-💡 The browser window is open - you can interact with it now!
-🚀 Once you're ready, press ENTER to start automated scraping...
+   🌐 Window 1: @d4vdd
+   🌐 Window 2: @artist2
 
-🤖 Starting automated scraping phase...
-   ⏱️  Waited 2.3s before starting automation
-🔍 Finding video containers...
-   ✅ Found video links: 47
-📹 Found 47 videos to scrape
-🎯 Will scrape all 47 videos found
+⏱️  Giving you 12.4s to set up all windows...
+🚀 Auto-scrolling will start automatically!
 
-📹 Processing video 1/47...
+📜 Auto-scrolling ALL windows simultaneously...
+   📜 Starting auto-scroll for @d4vdd (Window 1)...
+   📜 Starting auto-scroll for @artist2 (Window 2)...
+   📜 Window 1 (@d4vdd): +15 videos (total: 47)
+   📜 Window 2 (@artist2): +12 videos (total: 38)
+   📜 Window 2 (@artist2): +9 videos (total: 47)
+   📜 Window 1 (@d4vdd): +8 videos (total: 55)
+   📜 Window 1 (@d4vdd): +15 videos (total: 70)
+   📜 Window 2 (@artist2): +13 videos (total: 60)
+   🏁 Window 2 (@artist2): Reached end after 3 scrolls
+   📜 Window 1 (@d4vdd): +7 videos (total: 77)
+   🏁 Window 1 (@d4vdd): Reached end after 5 scrolls
+   🎯 Window 2 (@artist2): Complete! 60 total videos loaded
+   🎯 Window 1 (@d4vdd): Complete! 77 total videos loaded
+
+✅ Auto-scrolling complete for all windows!
+
+============================================================
+🎯 Processing videos for @d4vdd (Window 1)
+============================================================
+
+📹 Processing video 1/70...
    ✅ Found profile view count: 142.5K
    ⏱️  Pre-click delay: 1.2s
    ⏱️  Video load delay: 3.7s
@@ -191,33 +271,88 @@ Enter TikTok URL: https://www.tiktok.com/@d4vdd
    💬 Comments: 1049 (1,049)
    ⏱️  Back navigation delay: 2.1s
 
-   ⏱️  Inter-video delay: 1.8s
+... (processing all 70 videos) ...
 
-📹 Processing video 2/47...
-   ✅ Found profile view count: 3.8M
-   ⏱️  Pre-click delay: 0.9s
-   ⏱️  Video load delay: 4.2s
-   🔍 Extracting metrics from video page...
-   ✅ Found likes: 89.4K (TikTok selector: browse-like-count)
-   ✅ Found bookmarks: 2156 (TikTok selector: undefined-count)
-   ✅ Found comments: 3421 (TikTok selector: browse-comment-count)
-   👁️  Views: 3.8M (3,800,000)
-   ❤️  Likes: 89.4K (89,400)
-   🔖 Bookmarks: 2156 (2,156)
-   💬 Comments: 3421 (3,421)
-   ⏱️  Back navigation delay: 1.6s
+💾 Saving data to tiktok_d4vdd_20250628_192349.csv...
+✅ Saved 70 videos to data/tiktok_d4vdd_20250628_192349.csv
 
-💾 Saving data to tiktok_scrape_20241215_143022.csv...
-✅ Saved 47 videos to data/tiktok_scrape_20241215_143022.csv
+📊 Profile Summary for @d4vdd:
+   📹 Videos scraped: 70
+   👁️  Total views: 15,234,567
+   ❤️  Total likes: 2,456,789
+   🔖 Total bookmarks: 89,123
+   💬 Total comments: 45,678
 
-📊 Scraping Summary:
-   📹 Videos scraped: 47
-   👁️  Total views: 12,543,891
-   ❤️  Total likes: 1,247,382
-   🔖 Total bookmarks: 89,574
-   💬 Total comments: 234,891
+💾 Saving data to tiktok_d4vdd_20250628_192349.csv...
+✅ Saved 70 videos to data/tiktok_d4vdd_20250628_192349.csv
 
-🎉 Scraping completed successfully! 
+📊 Profile Summary for @d4vdd:
+   📹 Videos scraped: 70
+   👁️  Total views: 15,234,567
+   ❤️  Total likes: 2,456,789
+   🔖 Total bookmarks: 89,123
+   💬 Total comments: 45,678
+
+============================================================
+🎯 Processing videos for @artist2 (Window 2)
+============================================================
+
+... (processing all 60 videos for artist2) ...
+
+💾 Saving data to tiktok_artist2_20250628_193425.csv...
+✅ Saved 60 videos to data/tiktok_artist2_20250628_193425.csv
+
+📊 Profile Summary for @artist2:
+   📹 Videos scraped: 60
+   👁️  Total views: 8,456,123
+   ❤️  Total likes: 1,234,567
+   🔖 Total bookmarks: 67,890
+   💬 Total comments: 34,567
+
+🔒 Closing all browser windows for batch 1...
+   🔒 Closing window 1...
+   🔒 Closing window 2...
+
+✅ Batch 1 complete!
+   📊 Batch stats: 2/2 successful, 130 videos
+   ⏸️  Taking a 7.3s break before next batch...
+
+🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸
+📦 BATCH 2/2 - Processing 2 profiles
+🎯 Profiles 3-4 of 4
+🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸🔸
+   3. @artist3: https://www.tiktok.com/@artist3
+   4. @artist4: https://www.tiktok.com/@artist4
+
+⏸️  Ready to start batch 2?
+   Press ENTER to continue, or type 'exit' to stop: 
+
+🌐 Launching fresh browser for batch 2...
+
+... (similar process for batch 2) ...
+
+✅ Batch 2 complete!
+   📊 Batch stats: 2/2 successful, 146 videos
+
+======================================================================
+🎉 ALL BATCHES COMPLETE!
+======================================================================
+📊 Final Summary:
+   📦 Batches processed: 2/2
+   👤 Total profiles processed: 4
+   ✅ Successful profiles: 4
+   📹 Total videos scraped: 276
+
+   📦 Batch 1:
+      ✅ @d4vdd: 70 videos
+      ✅ @artist2: 60 videos
+   📦 Batch 2:
+      ✅ @artist3: 82 videos
+      ✅ @artist4: 64 videos
+
+📁 All CSV files saved in the 'data/' directory
+
+🎉 All scraping completed successfully! 
 ```
 
 ## 🛠️ Requirements
