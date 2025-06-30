@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseStore } from '@/lib/storage-db'
+import { authenticate } from '@/lib/auth'
 
 export async function GET() {
   try {
@@ -15,6 +16,13 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!authenticate(request)) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
+  }
+
   try {
     const body = await request.json()
     const { name } = body
@@ -38,6 +46,13 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!authenticate(request)) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
+  }
+
   try {
     const body = await request.json()
     const { id, ...updates } = body

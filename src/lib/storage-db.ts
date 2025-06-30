@@ -59,6 +59,7 @@ export class DatabaseStore {
         data: {
           ...updates,
           status: updates.status?.toUpperCase() as any,
+          type: updates.type?.toUpperCase() as any,
           startedAt: updates.startedAt ? new Date(updates.startedAt) : undefined,
           completedAt: updates.completedAt ? new Date(updates.completedAt) : undefined,
         },

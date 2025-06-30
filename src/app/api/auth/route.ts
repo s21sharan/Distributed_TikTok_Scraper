@@ -1,21 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-const API_SECRET_KEY = process.env.API_SECRET_KEY
-
-export function authenticate(request: NextRequest): boolean {
-  if (!API_SECRET_KEY) {
-    // Allow all requests if no API key is set (development mode)
-    return true
-  }
-
-  const authHeader = request.headers.get('authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return false
-  }
-
-  const token = authHeader.substring(7)
-  return token === API_SECRET_KEY
-}
+import { authenticate } from '@/lib/auth'
 
 export async function GET() {
   return NextResponse.json({ message: 'Auth endpoint' })
@@ -24,6 +8,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { apiKey } = await request.json()
+    
+    const API_SECRET_KEY = process.env.API_SECRET_KEY
     
     if (!API_SECRET_KEY) {
       return NextResponse.json({ 

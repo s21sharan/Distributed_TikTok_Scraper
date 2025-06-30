@@ -1,28 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true,
-  },
-  api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
-  },
-  // Enable standalone output for Docker
   output: 'standalone',
-  // Configure for Docker networking
-  async rewrites() {
+  images: {
+    domains: ['p16-va.tiktokcdn.com', 'p16-amd-va.tiktokcdn.com'],
+  },
+  async headers() {
     return [
       {
         source: '/api/:path*',
-        destination: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+        ],
       },
     ]
-  },
-  // Environment variables
-  env: {
-    DATABASE_URL: process.env.DATABASE_URL,
-    REDIS_URL: process.env.REDIS_URL,
   },
 }
 
