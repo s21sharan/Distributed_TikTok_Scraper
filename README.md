@@ -1,174 +1,250 @@
-# TikTok Music Trends Dashboard
+# TikTok Scraper Dashboard
 
-A comprehensive Next.js dashboard for analyzing TikTok music trends with real-time data visualization and filtering capabilities.
+A modern, responsive web dashboard for managing TikTok scraping operations. Built with Next.js, TypeScript, and Tailwind CSS, designed to be deployed on Vercel.
 
 ## Features
 
-### 🎛️ Interactive Sidebar Filters
-- **Hashtag Autocomplete**: Search and select hashtags with real-time suggestions
-- **Date Range Picker**: Select custom date ranges for trend analysis
-- **Region Selector**: Filter data by geographical regions
-- **Genre Selector**: Filter by music genres
-- **Apply Filters**: Trigger data refresh with selected filters
+### 🎯 Dashboard Overview
+- Real-time system statistics
+- Queue status monitoring
+- Worker activity tracking
+- System health indicators
 
-### 📊 Header
-- **Logo & Branding**: TikTok Music Trends branding with gradient logo
-- **Last Updated**: Real-time timestamp showing when data was last refreshed
-- **User Menu**: Avatar dropdown with user profile and settings options
+### 📋 Queue Management
+- Add TikTok URLs to scraping queue
+- Support for both profile and individual video scraping
+- Real-time progress tracking
+- Queue item status monitoring
+- Remove pending items from queue
 
-### 📈 Key Performance Indicators (KPIs)
-- **Total Plays**: Aggregate play count with growth percentage
-- **Total Likes**: Aggregate like count with growth percentage  
-- **Total Shares**: Aggregate share count with growth percentage
-- **Save-to-Play Ratio**: Conversion rate metric with trend indicator
+### 👥 Worker Management
+- Add and remove workers
+- Start, pause, and stop worker processes
+- Monitor worker status and activity
+- View current tasks and processing statistics
+- Error handling and worker reset functionality
 
-### 📊 Data Visualizations
-
-#### Line Chart - Plays Over Time
-- Responsive line chart showing 30-day trends
-- Multiple data series (plays, likes, shares)
-- Interactive tooltips with formatted numbers
-- Custom styling with gradient colors
-
-#### Horizontal Bar Chart - Top Rising Artists
-- Artists ranked by percentage growth
-- Custom tooltips showing growth rate and total plays
-- Purple gradient styling matching brand colors
-
-#### Hashtag Word Cloud
-- Visual representation of hashtag co-occurrence
-- Font sizes based on frequency
-- Color-coded by popularity
-- Interactive hover effects with occurrence counts
-
-#### Artist Performance Table
-- Sortable columns for all metrics
-- Pagination (10 artists per page)
-- Genre badges for each artist
-- Trending status indicators (Hot, Rising, Trending, Stable)
-- External links to sample videos
-- Responsive design for mobile/desktop
+### 📊 Results Viewing
+- View completed scraping results
+- Download CSV files
+- Success rate statistics
+- Processing time analytics
+- File size information
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 with App Router
-- **Styling**: Tailwind CSS + shadcn/ui components
-- **Charts**: Recharts for data visualization
-- **TypeScript**: Full type safety throughout
-- **Date Handling**: date-fns for date manipulation
-- **Icons**: Lucide React for consistent iconography
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS, Headless UI
+- **Icons**: Heroicons
+- **Deployment**: Vercel
+- **State Management**: React hooks with local state
+- **API**: Next.js API routes
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ 
+- npm or yarn
+- Git
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd tiktok-scraper-ui
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Run the development server:
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Deployment on Vercel
+
+### Option 1: Deploy from GitHub
+
+1. Push your code to a GitHub repository
+2. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+3. Click "New Project"
+4. Import your GitHub repository
+5. Configure project settings:
+   - Framework Preset: Next.js
+   - Root Directory: `./` (default)
+   - Build Command: `npm run build` (default)
+   - Output Directory: `.next` (default)
+6. Click "Deploy"
+
+### Option 2: Deploy with Vercel CLI
+
+1. Install Vercel CLI:
+```bash
+npm i -g vercel
+```
+
+2. Login to Vercel:
+```bash
+vercel login
+```
+
+3. Deploy:
+```bash
+vercel --prod
+```
 
 ## Project Structure
 
 ```
 src/
-├── app/                    # Next.js App Router
+├── app/                    # App router pages
+│   ├── api/               # API routes
+│   │   ├── queue/         # Queue management endpoints
+│   │   ├── workers/       # Worker management endpoints
+│   │   ├── results/       # Results endpoints
+│   │   └── stats/         # Statistics endpoints
+│   ├── queue/             # Queue management page
+│   ├── workers/           # Worker management page
+│   ├── results/           # Results viewing page
 │   ├── globals.css        # Global styles
 │   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Main dashboard page
-├── components/
-│   ├── ui/                # shadcn/ui components
-│   └── dashboard/         # Dashboard-specific components
-│       ├── header.tsx
-│       ├── sidebar.tsx
-│       ├── kpi-cards.tsx
-│       ├── plays-chart.tsx
-│       ├── artist-growth-chart.tsx
-│       ├── hashtag-wordcloud.tsx
-│       └── artist-table.tsx
-├── lib/
-│   ├── api.ts            # Mock API functions (Cursor queries simulation)
-│   └── utils.ts          # Utility functions
-└── types/
-    └── dashboard.ts      # TypeScript type definitions
+│   └── page.tsx           # Dashboard page
+├── components/            # Reusable components
+│   ├── Navbar.tsx         # Navigation component
+│   └── StatCard.tsx       # Statistics card component
+├── lib/                   # Utility libraries
+│   └── storage.ts         # Data storage utilities
+└── types/                 # TypeScript type definitions
+    └── scraper.ts         # Scraper-related types
 ```
 
-## Data Architecture
+## API Endpoints
 
-### Mock API (Simulating Cursor Queries)
-The application includes mock API functions that simulate "Cursor queries" for data fetching:
+### Queue Management
+- `GET /api/queue` - Get all queue items
+- `POST /api/queue` - Add item to queue
+- `DELETE /api/queue?id={id}` - Remove item from queue
 
-- `fetchDashboardData()`: Main dashboard data aggregation
-- `fetchHashtagSuggestions()`: Autocomplete functionality
-- `fetchRegions()`: Available geographical regions
-- `fetchGenres()`: Available music genres
+### Worker Management  
+- `GET /api/workers` - Get all workers
+- `POST /api/workers` - Create new worker
+- `PATCH /api/workers` - Update worker status
+- `DELETE /api/workers?id={id}` - Remove worker
 
-### Type Safety
-Comprehensive TypeScript interfaces ensure type safety:
-- `DashboardData`: Main data structure
-- `DashboardFilters`: Filter state management
-- `KPIMetrics`: Key performance indicators
-- `ArtistMetrics`: Individual artist data
-- `PlayTrendData`: Time series data
-- `HashtagData`: Word cloud data
+### Results
+- `GET /api/results` - Get all scraping results
 
-## Getting Started
+### Statistics
+- `GET /api/stats` - Get system statistics
 
-1. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+## Data Models
 
-2. **Run Development Server**
-   ```bash
-   npm run dev
-   ```
+### QueueItem
+```typescript
+interface QueueItem {
+  id: string
+  url: string
+  type: 'profile' | 'video'
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  addedAt: string
+  startedAt?: string
+  completedAt?: string
+  error?: string
+  progress?: number
+  videosFound?: number
+  videosProcessed?: number
+}
+```
 
-3. **Open Dashboard**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+### Worker
+```typescript
+interface Worker {
+  id: string
+  name: string
+  status: 'idle' | 'running' | 'paused' | 'error'
+  currentTask?: QueueItem
+  processedCount: number
+  startedAt?: string
+  lastActivity?: string
+  errorMessage?: string
+}
+```
 
 ## Features in Detail
 
-### Server-Side Data Fetching
-- Initial data loaded server-side for optimal performance
-- Filter application triggers new data requests
-- Loading states during data transitions
-
-### Client-Side Interactivity
-- Real-time filter updates without page refresh
-- Sortable table columns with visual indicators
-- Pagination controls for large datasets
-- Interactive charts with hover states
+### Real-time Updates
+- Dashboard polls API every 5 seconds for updates
+- Queue page polls every 3 seconds for real-time progress
+- Workers page polls every 3 seconds for status updates
 
 ### Responsive Design
-- Mobile-first approach using Tailwind CSS
-- Collapsible sidebar for mobile devices
-- Responsive grid layouts for charts
-- Adaptive table design for smaller screens
+- Mobile-first approach
+- Responsive navigation with mobile menu
+- Grid layouts that adapt to screen size
+- Touch-friendly interface elements
 
-### Performance Optimizations
-- Component-level code splitting
-- Optimized bundle with Next.js 14
-- Efficient re-rendering with React hooks
-- Lazy loading for non-critical components
+### User Experience
+- Loading states for all async operations
+- Error handling with user-friendly messages
+- Confirmation dialogs for destructive actions
+- Visual feedback for all user interactions
+
+## Integration with Python Scraper
+
+This dashboard is designed to work with the existing Python TikTok scraper. To integrate:
+
+1. **API Integration**: Modify the Python scraper to communicate with the dashboard's API endpoints
+2. **Queue Processing**: Have the Python scraper poll the `/api/queue` endpoint for new jobs
+3. **Status Updates**: Update job status through the API as processing progresses
+4. **Results Storage**: Save completed results through the `/api/results` endpoint
 
 ## Customization
 
-### Adding New Filters
-1. Update `DashboardFilters` interface in `types/dashboard.ts`
-2. Add form controls to `components/dashboard/sidebar.tsx`
-3. Update API functions in `lib/api.ts` to handle new filters
+### Styling
+- Modify `tailwind.config.js` to customize colors and themes
+- Update `src/app/globals.css` for custom CSS
+- Customize component styles in individual component files
 
-### Adding New Charts
-1. Create new component in `components/dashboard/`
-2. Add data interface to `types/dashboard.ts`
-3. Import and place in main dashboard layout
+### Functionality
+- Add new API endpoints in `src/app/api/`
+- Create new pages in `src/app/`
+- Extend data models in `src/types/scraper.ts`
+- Add new components in `src/components/`
 
-### Styling Customization
-- Modify Tailwind config for brand colors
-- Update shadcn/ui component themes
-- Customize chart colors in individual components
+## Environment Variables
 
-## Future Enhancements
+For production deployment, you may want to set:
 
-- [ ] Real TikTok API integration
-- [ ] Advanced filtering options
-- [ ] Export functionality (PDF, CSV)
-- [ ] Real-time data streaming
-- [ ] User authentication and personalization
-- [ ] Mobile app version
-- [ ] Advanced analytics and insights
+```bash
+NODE_ENV=production
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-This project is created for demonstration purposes. Please ensure compliance with TikTok's API terms of service if integrating with real TikTok data.
+This project is licensed under the MIT License.
+
+## Support
+
+For issues and questions:
+1. Check the GitHub issues
+2. Create a new issue with detailed description
+3. Include steps to reproduce any bugs 

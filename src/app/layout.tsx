@@ -1,35 +1,32 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import Navbar from '@/components/Navbar'
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono", 
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "TikTok Music Analytics",
-  description: "Discover TikTok music genre trends, rising artists, hashtag co-occurrence, and artist performance insights.",
-  keywords: ["TikTok", "music", "genres", "artists", "analytics", "trends", "hashtags", "performance"],
-};
+  title: 'TikTok Scraper Dashboard',
+  description: 'Manage TikTok scraper workers and queue videos for scraping',
+}
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={inter.className}>
+        <div className="min-h-screen bg-gray-50">
+          <Navbar />
+          <main className="py-6">
+            <div className="mx-auto max-w-7xl px-6 lg:px-8">
+              {children}
+            </div>
+          </main>
+        </div>
       </body>
     </html>
-  );
-}
+  )
+} 

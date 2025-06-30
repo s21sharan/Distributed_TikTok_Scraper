@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model QueueItem {
+  id               String    @id @default(cuid())
+  url              String
+  type             QueueType @default(PROFILE)
+  status           QueueStatus @default(PENDING)
+  addedAt          DateTime  @default(now())
+  startedAt        DateTime?
+  completedAt      DateTime?
+  error            String?
+  progress         Int       @default(0)
+  videosFound      Int?
+  videosProcessed  Int?
+  workerId         String?
+  worker           Worker?   @relation(fields: [workerId], references: [id])
+  results          ScrapingResult[]
+  
+  @@map("queue_items")
+}
+
+model Worker {
+  id             String       @id @default(cuid())
+  name           String       @unique
+  status         WorkerStatus @default(IDLE)
+  processedCount Int          @default(0)
+  startedAt      DateTime     @default(now())
+  lastActivity   DateTime     @default(now())
+  errorMessage   String?
+  currentTaskId  String?
+  queueItems     QueueItem[]
+  
+  @@map("workers")
+}
+
+model ScrapingResult {
+  id               String    @id @default(cuid())
+  queueItemId      String
+  queueItem        QueueItem @relation(fields: [queueItemId], references: [id])
+  url              String
+  username         String?
+  totalVideos      Int       @default(0)
+  successfulVideos Int       @default(0)
+  failedVideos     Int       @default(0)
+  csvFilePath      String?
+  completedAt      DateTime  @default(now())
+  processingTime   Int       @default(0) // in seconds
+  videoData        VideoData[]
+  
+  @@map("scraping_results")
+}
+
+model VideoData {
+  id           String         @id @default(cuid())
+  resultId     String
+  result       ScrapingResult @relation(fields: [resultId], references: [id])
+  videoId      String
+  url          String
+  description  String?
+  likes        Int            @default(0)
+  shares       Int            @default(0)
+  comments     Int            @default(0)
+  views        Int            @default(0)
+  duration     String?
+  uploadDate   DateTime?
+  hashtags     String[]
+  mentions     String[]
+  createdAt    DateTime       @default(now())
+  
+  @@map("video_data")
+}
+
+model SystemStats {
+  id        String   @id @default(cuid())
+  uptime    Int      @default(0) // in seconds
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("system_stats")
+}
+
+enum QueueType {
+  PROFILE
+  VIDEO
+}
+
+enum QueueStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum WorkerStatus {
+  IDLE
+  RUNNING
+  PAUSED
+  ERROR
+} 
