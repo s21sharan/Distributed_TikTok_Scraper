@@ -18,6 +18,7 @@ PostgreSQL: postgresql://username:password@host:port/database
 postgresql://postgres:wBAgCMbQKWWxHSSngriNwErlhoMxMesU@shinkansen.proxy.rlwy.net:14134/railway
 
 Redis: redis://username:password@host:port
+redis://default:omMwvgbIPfLKXHzzrHiegbJDrXigwtRF@trolley.proxy.rlwy.net:25520
 
 ```
 
@@ -39,8 +40,8 @@ vercel
 
 **Set Environment Variables** in Vercel dashboard:
 ```env
-DATABASE_URL=your_postgresql_url_here
-REDIS_URL=your_redis_url_here
+DATABASE_URL=postgresql://postgres:wBAgCMbQKWWxHSSngriNwErlhoMxMesU@shinkansen.proxy.rlwy.net:14134/railway
+REDIS_URL=redis://default:omMwvgbIPfLKXHzzrHiegbJDrXigwtRF@trolley.proxy.rlwy.net:25520
 API_SECRET_KEY=supersecretkey123
 ```
 

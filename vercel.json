@@ -8,11 +8,6 @@
       "maxDuration": 60
     }
   },
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "REDIS_URL": "@redis_url",
-    "API_SECRET_KEY": "@api_secret_key"
-  },
   "headers": [
     {
       "source": "/api/(.*)",
