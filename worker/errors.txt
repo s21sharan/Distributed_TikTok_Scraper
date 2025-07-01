@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/Users/sharans/Desktop/projects/jun28/tiktok-music-trends/worker/../tiktok_scraper.py", line 1167, in main
+    original_print = print
+                     ^^^^^
+UnboundLocalError: cannot access local variable 'print' where it is not associated with a value
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/sharans/Desktop/projects/jun28/tiktok-music-trends/worker/../tiktok_scraper.py", line 1211, in <module>
+    main()
+  File "/Users/sharans/Desktop/projects/jun28/tiktok-music-trends/worker/../tiktok_scraper.py", line 1205, in main
+    print(f"❌ An error occurred: {e}", file=sys.stderr)
+    ^^^^^
+UnboundLocalError: cannot access local variable 'print' where it is not associated with a value

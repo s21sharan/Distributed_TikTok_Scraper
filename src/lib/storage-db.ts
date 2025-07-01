@@ -1,6 +1,7 @@
 import { QueueItem, Worker, ScrapingResult, SystemStats } from '@/types/scraper'
 import { prisma } from './database'
 import { publishUpdate } from './realtime'
+import { redis } from './redis'
 
 export class DatabaseStore {
   private systemStartTime = Date.now()
@@ -58,7 +59,7 @@ export class DatabaseStore {
         where: { id },
         data: {
           ...updates,
-          status: updates.status?.toUpperCase() as any,
+          status: updates.status?.toUpperCase() as 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED',
           type: updates.type?.toUpperCase() as any,
           startedAt: updates.startedAt ? new Date(updates.startedAt) : undefined,
           completedAt: updates.completedAt ? new Date(updates.completedAt) : undefined,
@@ -127,7 +128,7 @@ export class DatabaseStore {
         where: { id },
         data: {
           ...updates,
-          status: updates.status?.toUpperCase() as any,
+          status: updates.status?.toUpperCase() as 'IDLE' | 'RUNNING' | 'PAUSED' | 'ERROR',
           lastActivity: new Date(),
           startedAt: updates.startedAt ? new Date(updates.startedAt) : undefined,
         }
@@ -170,13 +171,39 @@ export class DatabaseStore {
 
   async removeWorker(id: string): Promise<boolean> {
     try {
+      // Get worker info before deletion
+      const worker = await prisma.worker.findUnique({ where: { id } })
+      if (!worker) {
+        console.error('Worker not found:', id)
+        return false
+      }
+
+      // Send shutdown command to the worker via Redis
+      try {
+        await redis.publish(`worker:${worker.name}:control`, JSON.stringify({
+          action: 'shutdown',
+          timestamp: Date.now()
+        }))
+        console.log(`Shutdown signal sent to worker: ${worker.name}`)
+        
+        // Give the worker a moment to receive the shutdown signal
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      } catch (redisError) {
+        console.error('Failed to send shutdown signal to worker:', redisError)
+        // Continue with deletion even if Redis command fails
+      }
+
+      // Remove worker from database
       await prisma.worker.delete({ where: { id } })
+      
+      // Publish realtime update for UI
       await publishUpdate({
         type: 'worker',
         action: 'delete',
         data: { id },
         timestamp: Date.now()
       })
+      
       return true
     } catch (error) {
       console.error('Failed to remove worker:', error)
@@ -195,6 +222,51 @@ export class DatabaseStore {
     })
     
     return results.map(this.mapResult)
+  }
+
+  async saveResults(queueItemId: string, videoData: any[]): Promise<ScrapingResult> {
+    // Get the queue item to extract URL and other info
+    const queueItem = await prisma.queueItem.findUnique({ 
+      where: { id: queueItemId } 
+    })
+    
+    if (!queueItem) {
+      throw new Error(`Queue item not found: ${queueItemId}`)
+    }
+
+    // Extract username from URL
+    const urlMatch = queueItem.url.match(/@([^\/\?]+)/)
+    const username = urlMatch ? urlMatch[1] : 'unknown'
+
+    // Convert the scraped video data to the expected format
+    const convertedVideoData = videoData.map(video => ({
+      videoId: video.video_url?.split('/video/')[1]?.split('?')[0] || 'unknown',
+      url: video.video_url || '',
+      description: '', // Not available in current scraper output
+      likes: video.likes || 0,
+      shares: 0, // Not available in current scraper output
+      comments: video.comments || 0,
+      views: video.views || 0,
+      duration: undefined, // Not available in current scraper output
+      uploadDate: undefined, // Not available in current scraper output
+      hashtags: [], // Not available in current scraper output
+      mentions: [] // Not available in current scraper output
+    }))
+
+    const result = {
+      queueItemId,
+      url: queueItem.url,
+      username,
+      totalVideos: videoData.length,
+      successfulVideos: videoData.length,
+      failedVideos: 0,
+      csvFilePath: undefined, // CSV is handled separately if needed
+      processingTime: 0, // Could be calculated from queue item timestamps
+      completedAt: new Date().toISOString(),
+      videoData: convertedVideoData
+    }
+
+    return this.addResult(result)
   }
 
   async addResult(result: Omit<ScrapingResult, 'id'>): Promise<ScrapingResult> {
