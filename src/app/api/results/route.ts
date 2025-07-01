@@ -8,8 +8,9 @@ export async function GET() {
     return NextResponse.json(results)
   } catch (error) {
     console.error('Error fetching results:', error)
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
     return NextResponse.json(
-      { error: 'Failed to fetch results' },
+      { error: 'Failed to fetch results', details: errorMessage },
       { status: 500 }
     )
   }
@@ -95,8 +96,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
     console.error('Error saving results:', error)
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
     return NextResponse.json(
-      { error: 'Failed to save results', details: error.message },
+      { error: 'Failed to save results', details: errorMessage },
       { status: 500 }
     )
   }
