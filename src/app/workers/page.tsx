@@ -53,24 +53,7 @@ export default function WorkersPage() {
 
 
 
-  const removeWorker = async (workerId: string) => {
-    if (!confirm('Are you sure you want to remove this worker?')) return
 
-    try {
-      const response = await fetch(`/api/workers?id=${workerId}`, {
-        method: 'DELETE'
-      })
-      
-      if (response.ok) {
-        fetchWorkers() // Refresh workers list
-      } else {
-        alert('Failed to remove worker')
-      }
-    } catch (error) {
-      console.error('Failed to remove worker:', error)
-      alert('Failed to remove worker')
-    }
-  }
 
   useEffect(() => {
     fetchWorkers()
@@ -275,12 +258,7 @@ export default function WorkersPage() {
                   </button>
                 )}
                 
-                <button
-                  onClick={() => removeWorker(worker.id)}
-                  className="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Remove
-                </button>
+
               </div>
             </div>
           ))}
