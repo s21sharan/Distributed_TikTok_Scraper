@@ -135,7 +135,7 @@ class TikTokWorker {
 
   async stop() {
     this.isRunning = false;
-    this.status = 'idle'; // Use valid enum value instead of 'stopped'
+    this.status = 'stopped';
     console.log(`Worker ${this.workerId} stopped`);
     await this.updateWorkerStatus();
   }

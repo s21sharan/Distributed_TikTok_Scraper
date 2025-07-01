@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseStore } from '@/lib/storage-db'
 import { authenticate } from '@/lib/auth'
+import { redis } from '@/lib/redis'
 
 export async function GET() {
   try {
@@ -77,6 +78,81 @@ export async function PATCH(request: NextRequest) {
     console.error('Error updating worker:', error)
     return NextResponse.json(
       { error: 'Failed to update worker' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  if (!authenticate(request)) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const body = await request.json()
+    const { workerId, action } = body
+    
+    if (!workerId || !action) {
+      return NextResponse.json(
+        { error: 'Worker ID and action are required' },
+        { status: 400 }
+      )
+    }
+
+    if (!['start', 'pause', 'stop'].includes(action)) {
+      return NextResponse.json(
+        { error: 'Invalid action. Must be start, pause, or stop' },
+        { status: 400 }
+      )
+    }
+    
+    // Get worker info
+    const worker = await databaseStore.getWorker(workerId)
+    if (!worker) {
+      return NextResponse.json(
+        { error: 'Worker not found' },
+        { status: 404 }
+      )
+    }
+
+    // Send control command to worker via Redis
+    try {
+      await redis.publish(`worker:${worker.name}:control`, JSON.stringify({
+        action: action,
+        timestamp: Date.now()
+      }))
+      console.log(`Control signal (${action}) sent to worker: ${worker.name}`)
+    } catch (redisError) {
+      console.error('Failed to send control signal to worker:', redisError)
+      return NextResponse.json(
+        { error: 'Failed to send control signal to worker' },
+        { status: 500 }
+      )
+    }
+
+    // Update worker status in database
+    const statusMap: Record<string, string> = {
+      'start': 'RUNNING',
+      'pause': 'PAUSED', 
+      'stop': 'STOPPED'
+    }
+    
+    const updatedWorker = await databaseStore.updateWorker(workerId, {
+      status: statusMap[action] as any
+    })
+    
+    return NextResponse.json({ 
+      success: true, 
+      worker: updatedWorker,
+      message: `Worker ${action} command sent successfully`
+    })
+  } catch (error) {
+    console.error('Error controlling worker:', error)
+    return NextResponse.json(
+      { error: 'Failed to control worker' },
       { status: 500 }
     )
   }

@@ -6,7 +6,7 @@ import { PlayIcon, PauseIcon, StopIcon, CpuChipIcon } from '@heroicons/react/24/
 interface Worker {
   id: string
   name: string
-  status: 'running' | 'paused' | 'stopped'
+  status: 'idle' | 'running' | 'paused' | 'stopped' | 'error'
   currentTask?: string
   tasksCompleted: number
   startedAt: string
@@ -51,24 +51,7 @@ export default function WorkersPage() {
     }
   }
 
-  const addWorker = async () => {
-    try {
-      const response = await fetch('/api/workers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: `Worker-${Date.now()}` })
-      })
-      
-      if (response.ok) {
-        fetchWorkers() // Refresh workers list
-      } else {
-        alert('Failed to create worker')
-      }
-    } catch (error) {
-      console.error('Failed to create worker:', error)
-      alert('Failed to create worker')
-    }
-  }
+
 
   const removeWorker = async (workerId: string) => {
     if (!confirm('Are you sure you want to remove this worker?')) return
@@ -98,9 +81,11 @@ export default function WorkersPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'running': return 'status-running'
-      case 'paused': return 'status-paused'
-      case 'stopped': return 'status-stopped'
+      case 'running': return 'bg-green-100 text-green-800'
+      case 'paused': return 'bg-yellow-100 text-yellow-800'
+      case 'stopped': return 'bg-red-100 text-red-800'
+      case 'idle': return 'bg-blue-100 text-blue-800'
+      case 'error': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -110,6 +95,8 @@ export default function WorkersPage() {
       case 'running': return <PlayIcon className="h-4 w-4 text-green-600" />
       case 'paused': return <PauseIcon className="h-4 w-4 text-yellow-600" />
       case 'stopped': return <StopIcon className="h-4 w-4 text-red-600" />
+      case 'idle': return <CpuChipIcon className="h-4 w-4 text-blue-600" />
+      case 'error': return <StopIcon className="h-4 w-4 text-red-600" />
       default: return <CpuChipIcon className="h-4 w-4 text-gray-600" />
     }
   }
@@ -193,20 +180,12 @@ export default function WorkersPage() {
         </div>
       </div>
 
-      {/* Add Worker Button */}
-      <div className="mb-6">
-        <button
-          onClick={addWorker}
-          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-md hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-        >
-          Add New Worker
-        </button>
-      </div>
+
 
       {/* Workers Grid */}
       {workers.length === 0 ? (
         <div className="bg-white shadow rounded-lg p-6 text-center text-gray-500">
-          No workers available. Click "Add New Worker" to create one.
+          No workers available. Start workers from the command line to see them here.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -256,7 +235,7 @@ export default function WorkersPage() {
               </div>
               
               <div className="flex gap-2">
-                {worker.status === 'stopped' && (
+                {(worker.status === 'stopped' || worker.status === 'idle') && (
                   <button
                     onClick={() => controlWorker(worker.id, 'start')}
                     className="flex-1 px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center justify-center gap-1"

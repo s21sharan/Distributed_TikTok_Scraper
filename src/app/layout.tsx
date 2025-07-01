@@ -6,7 +6,7 @@ import Navbar from '@/components/Navbar'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'TikTok Scraper Dashboard',
+  title: 'Dashboard',
   description: 'Manage TikTok scraper workers and queue videos for scraping',
 }
 

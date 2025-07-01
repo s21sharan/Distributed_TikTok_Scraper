@@ -15,7 +15,7 @@ export interface QueueItem {
 export interface Worker {
   id: string
   name: string
-  status: 'idle' | 'running' | 'paused' | 'error'
+  status: 'idle' | 'running' | 'paused' | 'stopped' | 'error'
   currentTask?: QueueItem
   processedCount: number
   startedAt?: string
