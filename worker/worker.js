@@ -173,13 +173,15 @@ class TikTokWorker {
       }
 
       // Get next task from queue
-      const response = await axios.get(`${this.apiBaseUrl}/api/queue?status=pending&limit=1`, {
+      const response = await axios.get(`${this.apiBaseUrl}/api/queue/next`, {
         headers: this.getAuthHeaders()
       });
 
-      if (response.data && response.data.length > 0) {
-        const task = response.data[0];
-        await this.processTask(task);
+      if (response.data && !response.data.error) {
+        const task = response.data;
+        if (task) {
+          await this.processTask(task);
+        }
       }
     } catch (error) {
       console.error('Error processing queue:', error.message);
@@ -219,29 +221,49 @@ class TikTokWorker {
       if (result.success) {
         // Save results
         console.log(`💾 Sending ${result.data?.length || 0} video results to database`);
-        await axios.post(`${this.apiBaseUrl}/api/results`, {
-          queueItemId: taskId,
-          videoData: result.data
-        }, {
-          headers: this.getAuthHeaders()
-        });
-        console.log('✅ Results saved to database successfully');
-
-        // Mark task as completed
         try {
-          await axios.put(`${this.apiBaseUrl}/api/queue`, {
-            id: taskId,
-            action: 'complete'
+          await axios.post(`${this.apiBaseUrl}/api/results`, {
+            queueItemId: taskId,
+            videoData: result.data
           }, {
             headers: this.getAuthHeaders()
           });
-          console.log(`Successfully marked task ${taskId} as completed`);
-        } catch (apiError) {
-          console.error(`Failed to mark task ${taskId} as completed:`, apiError.response?.status, apiError.response?.data);
-        }
+          console.log('✅ Results saved to database successfully');
 
-        this.tasksCompleted++;
-        console.log(`Task completed successfully: ${task.url}`);
+          // Only mark as completed if saving results was successful
+          try {
+            await axios.put(`${this.apiBaseUrl}/api/queue`, {
+              id: taskId,
+              action: 'complete'
+            }, {
+              headers: this.getAuthHeaders()
+            });
+            console.log(`Successfully marked task ${taskId} as completed`);
+            this.tasksCompleted++;
+            console.log(`Task completed successfully: ${task.url}`);
+          } catch (apiError) {
+            console.error(`Failed to mark task ${taskId} as completed:`, apiError.response?.status, apiError.response?.data);
+            // If we can't mark it as completed, mark it as failed
+            await axios.put(`${this.apiBaseUrl}/api/queue`, {
+              id: taskId,
+              action: 'fail',
+              error: 'Failed to update task status after saving results'
+            }, {
+              headers: this.getAuthHeaders()
+            });
+          }
+        } catch (saveError) {
+          console.error(`Failed to save results for task ${taskId}:`, saveError.response?.status, saveError.response?.data);
+          // Mark task as failed if saving results fails
+          await axios.put(`${this.apiBaseUrl}/api/queue`, {
+            id: taskId,
+            action: 'fail',
+            error: 'Failed to save scraping results to database'
+          }, {
+            headers: this.getAuthHeaders()
+          });
+          throw saveError; // Re-throw to trigger the catch block
+        }
       } else {
         throw new Error(result.error);
       }
