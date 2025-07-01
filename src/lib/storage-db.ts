@@ -84,7 +84,26 @@ export class DatabaseStore {
 
   async removeFromQueue(id: string): Promise<boolean> {
     try {
+      // First delete related ScrapingResults and VideoData
+      const scrapingResults = await prisma.scrapingResult.findMany({
+        where: { queueItemId: id }
+      })
+      
+      for (const result of scrapingResults) {
+        // Delete VideoData first
+        await prisma.videoData.deleteMany({
+          where: { resultId: result.id }
+        })
+        
+        // Then delete ScrapingResult
+        await prisma.scrapingResult.delete({
+          where: { id: result.id }
+        })
+      }
+      
+      // Finally delete the QueueItem
       await prisma.queueItem.delete({ where: { id } })
+      
       await publishUpdate({
         type: 'queue',
         action: 'delete',
