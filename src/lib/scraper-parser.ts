@@ -284,7 +284,47 @@ export async function processTikTokScraperOutput(queueItemId: string, rawOutput:
   console.log('🚀 Processing TikTok scraper output...')
   
   // Parse the raw output
+  console.log('🔍 RAW INPUT PREVIEW:')
+  if (Array.isArray(rawOutput) && rawOutput.length > 0) {
+    console.log(`   Input type: Array with ${rawOutput.length} items`)
+    const firstItem = rawOutput[0]
+    console.log('   First item structure:', {
+      video_url: firstItem.video_url?.substring(0, 50) + '...',
+      views: firstItem.views,
+      views_raw: firstItem.views_raw,
+      likes: firstItem.likes,
+      likes_raw: firstItem.likes_raw,
+      description: firstItem.description?.substring(0, 30) + '...',
+      hashtags_count: firstItem.hashtags?.length || 0,
+      mentions_count: firstItem.mentions?.length || 0,
+      comments_count: firstItem.comments_list?.length || 0
+    })
+  } else {
+    console.log(`   Input type: ${typeof rawOutput}`)
+  }
+  
   const parsedVideos = ScraperParser.parseScraperOutput(rawOutput)
+  
+  // Show parsed output preview
+  console.log('\n🧹 PARSED OUTPUT PREVIEW:')
+  if (parsedVideos.length > 0) {
+    const firstParsed = parsedVideos[0]
+    console.log('   First parsed video:', {
+      video_url: firstParsed.video_url?.substring(0, 50) + '...',
+      views: firstParsed.views,
+      views_raw: firstParsed.views_raw,
+      likes: firstParsed.likes,
+      likes_raw: firstParsed.likes_raw,
+      bookmarks: firstParsed.bookmarks,
+      comments: firstParsed.comments,
+      description: firstParsed.description?.substring(0, 30) + '...',
+      hashtags: firstParsed.hashtags.slice(0, 3),
+      mentions: firstParsed.mentions.slice(0, 2),
+      comments_list_count: firstParsed.comments_list.length,
+      duration: firstParsed.duration,
+      upload_date: firstParsed.upload_date
+    })
+  }
   
   // Validate the data
   const { valid: validVideos, invalid: invalidCount } = ScraperParser.validateVideoData(parsedVideos)

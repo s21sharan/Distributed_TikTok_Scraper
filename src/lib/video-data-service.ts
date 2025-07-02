@@ -84,33 +84,66 @@ export class VideoDataService {
     console.log(`  Videos with music content: ${stats.musicVideos}`)
     console.log(`  Videos with trending hashtags: ${stats.trendingHashtagVideos}`)
 
+    // Prepare database payload
+    const databasePayload = {
+      queueItemId: queueItemId,
+      url: queueItem.url,
+      username: username,
+      totalVideos: processedVideos.length,
+      successfulVideos: processedVideos.length,
+      failedVideos: 0,
+      processingTime: 0,
+      videoData: {
+        create: processedVideos.map(video => ({
+          videoId: video.videoId,
+          url: video.url,
+          description: video.description,
+          likes: video.likes,
+          shares: video.bookmarks, // Using bookmarks as shares since shares aren't in scraper data
+          comments: video.comments,
+          views: video.views,
+          duration: video.duration,
+          uploadDate: video.uploadDate,
+          hashtags: video.hashtags,
+          mentions: video.mentions,
+          commentTexts: video.commentTexts
+        }))
+      }
+    }
+
+    console.log('\n💾 DATABASE PAYLOAD PREVIEW:')
+    console.log('📋 Scraping Result:')
+    console.log(`   Queue Item ID: ${databasePayload.queueItemId}`)
+    console.log(`   URL: ${databasePayload.url}`)
+    console.log(`   Username: ${databasePayload.username}`)
+    console.log(`   Total Videos: ${databasePayload.totalVideos}`)
+    
+    console.log('\n📹 VIDEO DATA PAYLOAD (First 2 videos):')
+    databasePayload.videoData.create.slice(0, 2).forEach((video, index) => {
+      console.log(`\n   Video ${index + 1}:`)
+      console.log(`     videoId: "${video.videoId}"`)
+      console.log(`     url: "${video.url}"`)
+      console.log(`     description: "${video.description?.substring(0, 50)}${video.description?.length > 50 ? '...' : ''}"`)
+      console.log(`     views: ${video.views}`)
+      console.log(`     likes: ${video.likes}`)
+      console.log(`     comments: ${video.comments}`)
+      console.log(`     shares: ${video.shares}`)
+      console.log(`     duration: "${video.duration}"`)
+      console.log(`     uploadDate: ${video.uploadDate?.toISOString()}`)
+      console.log(`     hashtags: [${video.hashtags.slice(0, 3).join(', ')}${video.hashtags.length > 3 ? ', ...' : ''}] (${video.hashtags.length} total)`)
+      console.log(`     mentions: [${video.mentions.slice(0, 2).join(', ')}${video.mentions.length > 2 ? ', ...' : ''}] (${video.mentions.length} total)`)
+      console.log(`     commentTexts: ${video.commentTexts.length} comments stored`)
+    })
+    
+    if (databasePayload.videoData.create.length > 2) {
+      console.log(`\n   ... and ${databasePayload.videoData.create.length - 2} more videos`)
+    }
+
+    console.log('\n🔄 Saving to database...')
+
     // Save to database
     const result = await prisma.scrapingResult.create({
-      data: {
-        queueItemId: queueItemId,
-        url: queueItem.url,
-        username: username,
-        totalVideos: processedVideos.length,
-        successfulVideos: processedVideos.length,
-        failedVideos: 0,
-        processingTime: 0,
-        videoData: {
-          create: processedVideos.map(video => ({
-            videoId: video.videoId,
-            url: video.url,
-            description: video.description,
-            likes: video.likes,
-            shares: video.bookmarks, // Using bookmarks as shares since shares aren't in scraper data
-            comments: video.comments,
-            views: video.views,
-            duration: video.duration,
-            uploadDate: video.uploadDate,
-            hashtags: video.hashtags,
-            mentions: video.mentions,
-            commentTexts: video.commentTexts
-          }))
-        }
-      },
+      data: databasePayload,
       include: {
         queueItem: true,
         videoData: true
@@ -118,6 +151,44 @@ export class VideoDataService {
     })
     
     console.log(`✅ Successfully saved ${result.videoData.length} videos to database`)
+    
+    // Log what was actually saved to database
+    console.log('\n✅ DATABASE SAVE CONFIRMATION:')
+    console.log('📋 Saved Scraping Result:')
+    console.log(`   ID: ${result.id}`)
+    console.log(`   Username: ${result.username}`)
+    console.log(`   Total Videos: ${result.totalVideos}`)
+    console.log(`   Successful: ${result.successfulVideos}`)
+    console.log(`   Completed At: ${result.completedAt.toISOString()}`)
+    
+    console.log('\n📹 SAVED VIDEO DATA (First 2 videos):')
+    result.videoData.slice(0, 2).forEach((video, index) => {
+      console.log(`\n   Saved Video ${index + 1}:`)
+      console.log(`     Database ID: ${video.id}`)
+      console.log(`     Video ID: ${video.videoId}`)
+      console.log(`     URL: ${video.url}`)
+      console.log(`     Description: "${video.description?.substring(0, 50)}${video.description?.length > 50 ? '...' : ''}"`)
+      console.log(`     Views: ${video.views}`)
+      console.log(`     Likes: ${video.likes}`)
+      console.log(`     Comments: ${video.comments}`)
+      console.log(`     Shares: ${video.shares}`)
+      console.log(`     Duration: ${video.duration}`)
+      console.log(`     Upload Date: ${video.uploadDate?.toISOString()}`)
+      console.log(`     Hashtags: [${video.hashtags.slice(0, 3).join(', ')}${video.hashtags.length > 3 ? ', ...' : ''}] (${video.hashtags.length} total)`)
+      console.log(`     Mentions: [${video.mentions.slice(0, 2).join(', ')}${video.mentions.length > 2 ? ', ...' : ''}] (${video.mentions.length} total)`)
+      console.log(`     Comment Texts: ${video.commentTexts.length} comments`)
+      if (video.commentTexts.length > 0) {
+        console.log(`     Sample Comments:`)
+        video.commentTexts.slice(0, 2).forEach((comment, i) => {
+          console.log(`       ${i + 1}. "${comment.substring(0, 40)}${comment.length > 40 ? '...' : ''}"`)
+        })
+      }
+      console.log(`     Created At: ${video.createdAt.toISOString()}`)
+    })
+    
+    if (result.videoData.length > 2) {
+      console.log(`\n   ... and ${result.videoData.length - 2} more videos saved to database`)
+    }
     
     // Publish realtime update
     await publishUpdate({
@@ -170,6 +241,37 @@ export class VideoDataService {
       }
       
       console.log(`  ✅ ${videoId}: ${processedVideo.views.toLocaleString()} views, ${metrics.engagement_rate.toFixed(1)}% engagement`)
+      
+      // Detailed logging of processed video data
+      console.log(`  📊 PROCESSED DATA for ${videoId}:`)
+      console.log(`     📝 Description: "${processedVideo.description?.substring(0, 60)}${processedVideo.description?.length > 60 ? '...' : ''}"`)
+      console.log(`     📈 Metrics:`, {
+        views: processedVideo.views,
+        likes: processedVideo.likes,
+        comments: processedVideo.comments,
+        bookmarks: processedVideo.bookmarks,
+        engagement_rate: `${metrics.engagement_rate.toFixed(2)}%`,
+        likes_per_view: metrics.likes_per_view.toFixed(4),
+        comments_per_view: metrics.comments_per_view.toFixed(4)
+      })
+      console.log(`     🏷️  Categories:`, {
+        music: content_categories.has_music,
+        dance: content_categories.has_dance,
+        comedy: content_categories.has_comedy,
+        educational: content_categories.has_educational,
+        trending: content_categories.has_trending_hashtags
+      })
+      console.log(`     🔗 Hashtags: [${processedVideo.hashtags.slice(0, 5).join(', ')}${processedVideo.hashtags.length > 5 ? ', ...' : ''}]`)
+      console.log(`     👤 Mentions: [${processedVideo.mentions.slice(0, 3).join(', ')}${processedVideo.mentions.length > 3 ? ', ...' : ''}]`)
+      console.log(`     💬 Comments: ${processedVideo.commentTexts.length} stored`)
+      if (processedVideo.commentTexts.length > 0) {
+        console.log(`     💬 Sample comments:`)
+        processedVideo.commentTexts.slice(0, 2).forEach((comment, i) => {
+          console.log(`        ${i + 1}. "${comment.substring(0, 50)}${comment.length > 50 ? '...' : ''}"`)
+        })
+      }
+      console.log(`     ⏱️  Duration: ${processedVideo.duration || 'N/A'}`)
+      console.log(`     📅 Upload Date: ${processedVideo.uploadDate?.toISOString() || 'N/A'}`)
       
       return processedVideo
     })
