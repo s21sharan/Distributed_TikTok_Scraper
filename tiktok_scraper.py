@@ -1096,8 +1096,11 @@ def scrape_videos_from_containers(driver, video_containers, wait):
             bookmarks = "0" 
             comments = "0"
             upload_date = None
+            description = ""
+            hashtags = []
+            mentions = []
             
-            print(f"   🔍 Extracting metrics from video page...")
+            print(f"   🔍 Extracting metrics and content from video page...")
             
             # Extract upload date using TikTok's data-e2e="browser-nickname" selector
             try:
@@ -1168,6 +1171,66 @@ def scrape_videos_from_containers(driver, video_containers, wait):
                     
             except Exception as e:
                 print(f"   ❌ Error extracting upload date: {e}")
+            
+            # Extract video description
+            try:
+                desc_element = driver.find_element(By.CSS_SELECTOR, 'span[data-e2e="new-desc-span"]')
+                description = desc_element.text.strip()
+                print(f"   📝 Found description: {description[:100]}{'...' if len(description) > 100 else ''}")
+            except:
+                try:
+                    # Fallback selectors for description
+                    alt_desc_selectors = [
+                        'span[data-e2e*="desc"]',
+                        '.video-meta-description',
+                        '[data-e2e="video-desc"]'
+                    ]
+                    for selector in alt_desc_selectors:
+                        try:
+                            desc_element = driver.find_element(By.CSS_SELECTOR, selector)
+                            description = desc_element.text.strip()
+                            print(f"   📝 Found description (fallback): {description[:100]}{'...' if len(description) > 100 else ''}")
+                            break
+                        except:
+                            continue
+                except:
+                    print(f"   ⚠️  No description found")
+            
+            # Extract hashtags and mentions from links
+            try:
+                # Find all search-common-link elements
+                link_elements = driver.find_elements(By.CSS_SELECTOR, 'a[data-e2e="search-common-link"]')
+                
+                for link in link_elements:
+                    try:
+                        href = link.get_attribute('href')
+                        text = link.text.strip()
+                        
+                        if href and text:
+                            # Check if it's a hashtag (links to /tag/...)
+                            if '/tag/' in href and text.startswith('#'):
+                                hashtag = text.replace('#', '').strip()
+                                if hashtag and hashtag not in hashtags:
+                                    hashtags.append(hashtag)
+                            
+                            # Check if it's a mention (links to /@...)
+                            elif '/@' in href and text.startswith('@'):
+                                mention = text.replace('@', '').strip()
+                                if mention and mention not in mentions:
+                                    mentions.append(mention)
+                    except Exception as link_error:
+                        continue
+                
+                if hashtags:
+                    print(f"   🏷️  Found hashtags: {hashtags}")
+                if mentions:
+                    print(f"   👤 Found mentions: {mentions}")
+                    
+                if not hashtags and not mentions:
+                    print(f"   ⚠️  No hashtags or mentions found")
+                    
+            except Exception as e:
+                print(f"   ❌ Error extracting hashtags/mentions: {e}")
             
             # Use TikTok's exact selectors for individual video page metrics
             # These selectors are based on the actual TikTok HTML structure
@@ -1258,6 +1321,9 @@ def scrape_videos_from_containers(driver, video_containers, wait):
                 'bookmarks_raw': bookmarks,
                 'comments_raw': comments,
                 'upload_date': upload_date,
+                'description': description,
+                'hashtags': hashtags,
+                'mentions': mentions,
                 'scraped_at': datetime.now().isoformat()
             }
             
@@ -1269,6 +1335,12 @@ def scrape_videos_from_containers(driver, video_containers, wait):
             print(f"   💬 Comments: {comments} ({parsed_comments:,})")
             if upload_date:
                 print(f"   📅 Upload Date: {upload_date}")
+            if description:
+                print(f"   📝 Description: {description[:80]}{'...' if len(description) > 80 else ''}")
+            if hashtags:
+                print(f"   🏷️  Hashtags: {hashtags}")
+            if mentions:
+                print(f"   👤 Mentions: {mentions}")
             
             # Go back to profile
             driver.back()

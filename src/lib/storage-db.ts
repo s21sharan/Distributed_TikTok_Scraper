@@ -369,15 +369,15 @@ export class DatabaseStore {
     const convertedVideoData = videoData.map(video => ({
       videoId: video.video_url?.split('/video/')[1]?.split('?')[0] || 'unknown',
       url: video.video_url || '',
-      description: '', // Not available in current scraper output
+      description: video.description || '', // Now available from scraper output
       likes: video.likes || 0,
       shares: 0, // Not available in current scraper output
       comments: video.comments || 0,
       views: video.views || 0,
       duration: undefined, // Not available in current scraper output
       uploadDate: video.upload_date || undefined, // Now available from scraper output
-      hashtags: [], // Not available in current scraper output
-      mentions: [] // Not available in current scraper output
+      hashtags: video.hashtags || [], // Now available from scraper output
+      mentions: video.mentions || [] // Now available from scraper output
     }))
 
     const result = {
