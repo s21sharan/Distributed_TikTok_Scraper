@@ -10,7 +10,7 @@ import csv
 import time
 import random
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -184,6 +184,79 @@ def parse_count(count_str):
             return int(float(clean_str))
         except:
             return 0
+
+def parse_upload_date(date_str):
+    """
+    Parse TikTok upload date strings into proper datetime objects.
+    Handles multiple formats:
+    - Relative dates: "3d ago", "2w ago", "1m ago", "1y ago"
+    - Partial dates: "4-25" (month-day, current year assumed)
+    - Full dates: "2024-12-23"
+    
+    Args:
+        date_str (str): Date string from TikTok
+        
+    Returns:
+        str: ISO formatted date string or None if parsing fails
+    """
+    if not date_str:
+        return None
+    
+    date_str = date_str.strip()
+    now = datetime.now()
+    
+    try:
+        # Handle relative dates like "3d ago", "2w ago", "1m ago", "1y ago"
+        if 'ago' in date_str.lower():
+            # Extract number and unit
+            match = re.match(r'(\d+)([dwmy])\s*ago', date_str.lower())
+            if match:
+                num = int(match.group(1))
+                unit = match.group(2)
+                
+                if unit == 'd':  # days
+                    upload_date = now - timedelta(days=num)
+                elif unit == 'w':  # weeks
+                    upload_date = now - timedelta(weeks=num)
+                elif unit == 'm':  # months (approximate)
+                    upload_date = now - timedelta(days=num * 30)
+                elif unit == 'y':  # years (approximate)
+                    upload_date = now - timedelta(days=num * 365)
+                else:
+                    return None
+                
+                return upload_date.isoformat()
+        
+        # Handle partial dates like "4-25" (month-day format)
+        elif re.match(r'^\d{1,2}-\d{1,2}$', date_str):
+            month, day = map(int, date_str.split('-'))
+            # Use current year, but if the date is in the future, use previous year
+            year = now.year
+            try:
+                upload_date = datetime(year, month, day)
+                if upload_date > now:
+                    upload_date = datetime(year - 1, month, day)
+                return upload_date.isoformat()
+            except ValueError:
+                # Invalid date (e.g., Feb 30)
+                return None
+        
+        # Handle full dates like "2024-12-23"
+        elif re.match(r'^\d{4}-\d{1,2}-\d{1,2}$', date_str):
+            try:
+                upload_date = datetime.strptime(date_str, '%Y-%m-%d')
+                return upload_date.isoformat()
+            except ValueError:
+                return None
+        
+        # Handle other potential formats
+        else:
+            print(f"   ⚠️  Unknown date format: {date_str}")
+            return None
+            
+    except Exception as e:
+        print(f"   ❌ Error parsing date '{date_str}': {e}")
+        return None
 
 def auto_scroll_and_load_videos(driver):
     """
@@ -1022,8 +1095,79 @@ def scrape_videos_from_containers(driver, video_containers, wait):
             likes = "0"
             bookmarks = "0" 
             comments = "0"
+            upload_date = None
             
             print(f"   🔍 Extracting metrics from video page...")
+            
+            # Extract upload date using TikTok's data-e2e="browser-nickname" selector
+            try:
+                # Look for the date in the browser-nickname span structure
+                date_elements = driver.find_elements(By.CSS_SELECTOR, 'span[data-e2e="browser-nickname"]')
+                for date_element in date_elements:
+                    # The date is usually in the last part after the " · " separator
+                    element_text = date_element.text.strip()
+                    if ' · ' in element_text:
+                        # Split by the separator and get the last part (the date)
+                        date_part = element_text.split(' · ')[-1].strip()
+                        if date_part and not date_part.startswith('@'):
+                            upload_date = parse_upload_date(date_part)
+                            if upload_date:
+                                print(f"   📅 Found upload date: {date_part} → {upload_date}")
+                                break
+                
+                # If not found in browser-nickname, try alternative selectors
+                if not upload_date:
+                    # Try to find date in other common TikTok date containers using XPath for text search
+                    try:
+                        # XPath to find spans containing "ago"
+                        date_elements = driver.find_elements(By.XPATH, "//span[contains(text(), 'ago')]")
+                        for elem in date_elements:
+                            text = elem.text.strip()
+                            if text:
+                                upload_date = parse_upload_date(text)
+                                if upload_date:
+                                    print(f"   📅 Found upload date (XPath ago): {text} → {upload_date}")
+                                    break
+                    except:
+                        pass
+                    
+                    # Try XPath for date patterns like "4-25" or "2024-12-23"
+                    if not upload_date:
+                        try:
+                            date_elements = driver.find_elements(By.XPATH, "//span[contains(text(), '-')]")
+                            for elem in date_elements:
+                                text = elem.text.strip()
+                                if text and (re.match(r'\d+-\d+', text) or re.match(r'\d{4}-\d+-\d+', text)):
+                                    upload_date = parse_upload_date(text)
+                                    if upload_date:
+                                        print(f"   📅 Found upload date (XPath date): {text} → {upload_date}")
+                                        break
+                        except:
+                            pass
+                            
+                    # Try CSS selectors for data attributes
+                    if not upload_date:
+                        try:
+                            css_selectors = ['[data-e2e*="date"]', '.date', 'time']
+                            for selector in css_selectors:
+                                date_elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                                for elem in date_elements:
+                                    text = elem.text.strip()
+                                    if text and ('ago' in text or re.match(r'\d+-\d+', text) or re.match(r'\d{4}-\d+-\d+', text)):
+                                        upload_date = parse_upload_date(text)
+                                        if upload_date:
+                                            print(f"   📅 Found upload date (CSS): {text} → {upload_date}")
+                                            break
+                                if upload_date:
+                                    break
+                        except:
+                            pass
+                            
+                if not upload_date:
+                    print(f"   ⚠️  No upload date found")
+                    
+            except Exception as e:
+                print(f"   ❌ Error extracting upload date: {e}")
             
             # Use TikTok's exact selectors for individual video page metrics
             # These selectors are based on the actual TikTok HTML structure
@@ -1113,6 +1257,7 @@ def scrape_videos_from_containers(driver, video_containers, wait):
                 'likes_raw': likes,
                 'bookmarks_raw': bookmarks,
                 'comments_raw': comments,
+                'upload_date': upload_date,
                 'scraped_at': datetime.now().isoformat()
             }
             
@@ -1122,6 +1267,8 @@ def scrape_videos_from_containers(driver, video_containers, wait):
             print(f"   ❤️  Likes: {likes} ({parsed_likes:,})")
             print(f"   🔖 Bookmarks: {bookmarks} ({parsed_bookmarks:,})")
             print(f"   💬 Comments: {comments} ({parsed_comments:,})")
+            if upload_date:
+                print(f"   📅 Upload Date: {upload_date}")
             
             # Go back to profile
             driver.back()

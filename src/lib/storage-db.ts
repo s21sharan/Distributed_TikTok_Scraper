@@ -375,7 +375,7 @@ export class DatabaseStore {
       comments: video.comments || 0,
       views: video.views || 0,
       duration: undefined, // Not available in current scraper output
-      uploadDate: undefined, // Not available in current scraper output
+      uploadDate: video.upload_date || undefined, // Now available from scraper output
       hashtags: [], // Not available in current scraper output
       mentions: [] // Not available in current scraper output
     }))
