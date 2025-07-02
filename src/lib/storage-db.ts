@@ -366,20 +366,47 @@ export class DatabaseStore {
     const username = urlMatch ? urlMatch[1] : 'unknown'
 
     // Convert the scraped video data to the expected format
-    const convertedVideoData = videoData.map(video => ({
-      videoId: video.video_url?.split('/video/')[1]?.split('?')[0] || 'unknown',
-      url: video.video_url || '',
-      description: video.description || '', // Now available from scraper output
-      likes: video.likes || 0,
-      shares: 0, // Not available in current scraper output
-      comments: video.comments || 0,
-      views: video.views || 0,
-      uploadDate: video.upload_date || undefined, // Now available from scraper output
-      hashtags: video.hashtags || [], // Now available from scraper output
-      mentions: video.mentions || [], // Now available from scraper output
-      commentTexts: video.comments_list || [], // Now available from scraper output
-      duration: video.duration || undefined // Now available from scraper output
-    }))
+    const convertedVideoData = videoData.map(video => {
+      const converted = {
+        videoId: video.video_url?.split('/video/')[1]?.split('?')[0] || 'unknown',
+        url: video.video_url || '',
+        description: video.description || '', // Now available from scraper output
+        likes: video.likes || 0,
+        shares: 0, // Not available in current scraper output
+        comments: video.comments || 0,
+        views: video.views || 0,
+        uploadDate: video.upload_date || undefined, // Now available from scraper output
+        hashtags: video.hashtags || [], // Now available from scraper output
+        mentions: video.mentions || [], // Now available from scraper output
+        commentTexts: video.comments_list || [], // Now available from scraper output
+        duration: video.duration || undefined // Now available from scraper output
+      }
+      
+      // Debug: Log conversion for first video
+      if (videoData.indexOf(video) === 0) {
+        console.log('🔍 DEBUG: Converting video data:', {
+          originalKeys: Object.keys(video),
+          original: {
+            description: video.description,
+            duration: video.duration,
+            upload_date: video.upload_date,
+            hashtags: video.hashtags,
+            mentions: video.mentions,
+            comments_list: video.comments_list?.length || 0
+          },
+          converted: {
+            description: converted.description,
+            duration: converted.duration,
+            uploadDate: converted.uploadDate,
+            hashtags: converted.hashtags,
+            mentions: converted.mentions,
+            commentTexts: converted.commentTexts?.length || 0
+          }
+        })
+      }
+      
+      return converted
+    })
 
     const result = {
       queueItemId,
