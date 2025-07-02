@@ -83,40 +83,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`💾 Saving ${videoData.length} video results for queue item ${queueItemId}`)
+    console.log(`🔍 Processing raw scraper output with ${videoData.length} items for queue item ${queueItemId}`)
     
     // Debug: Log first video data to see what fields are being received
     if (videoData.length > 0) {
-      console.log('🔍 DEBUG: First video data received:', {
+      console.log('🔍 DEBUG: First raw video data received:', {
         keys: Object.keys(videoData[0]),
-        description: videoData[0].description,
-        duration: videoData[0].duration,
-        upload_date: videoData[0].upload_date,
-        hashtags: videoData[0].hashtags,
-        mentions: videoData[0].mentions,
-        comments_list: videoData[0].comments_list?.length ? `${videoData[0].comments_list.length} comments` : 'no comments'
+        video_url: videoData[0].video_url,
+        views: videoData[0].views,
+        views_raw: videoData[0].views_raw,
+        description: videoData[0].description?.substring(0, 50) + '...',
+        hashtags: videoData[0].hashtags?.length || 0,
+        mentions: videoData[0].mentions?.length || 0,
+        comments_list: videoData[0].comments_list?.length || 0
       })
     }
     
-    const result = await databaseStore.saveResults(queueItemId, videoData)
+    // Use the new scraper parser to process and save the data
+    const { processTikTokScraperOutput } = await import('@/lib/scraper-parser')
+    const result = await processTikTokScraperOutput(queueItemId, videoData)
     
-    console.log('✅ Results saved successfully:', {
+    console.log('✅ Results processed and saved successfully:', {
       resultId: result.id,
       totalVideos: result.totalVideos,
       username: result.username
     })
-    
-    // Debug: Log first video result to see what was actually saved
-    if (result.videoData && result.videoData.length > 0) {
-      console.log('🔍 DEBUG: First video result saved:', {
-        description: result.videoData[0].description,
-        duration: result.videoData[0].duration,
-        uploadDate: result.videoData[0].uploadDate,
-        hashtags: result.videoData[0].hashtags,
-        mentions: result.videoData[0].mentions,
-        commentTexts: result.videoData[0].commentTexts?.length ? `${result.videoData[0].commentTexts.length} comments` : 'no comments'
-      })
-    }
     
     return NextResponse.json(result, { status: 201 })
   } catch (error) {

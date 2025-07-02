@@ -352,94 +352,9 @@ export class DatabaseStore {
   }
 
   async saveResults(queueItemId: string, scrapedVideos: any[]): Promise<ScrapingResult> {
-    console.log('💾 Saving scraper results to database...')
-    console.log(`📊 Processing ${scrapedVideos.length} videos for queue item: ${queueItemId}`)
-    
-    // Get queue item info
-    const queueItem = await prisma.queueItem.findUnique({ 
-      where: { id: queueItemId } 
-    })
-    
-    if (!queueItem) {
-      throw new Error(`Queue item not found: ${queueItemId}`)
-    }
-
-    // Extract username from URL
-    const urlMatch = queueItem.url.match(/@([^\/\?]+)/)
-    const username = urlMatch ? urlMatch[1] : 'unknown'
-    
-    console.log(`👤 Profile: @${username}`)
-
-    // Create the scraping result with video data
-    const result = await prisma.scrapingResult.create({
-      data: {
-        queueItemId: queueItemId,
-        url: queueItem.url,
-        username: username,
-        totalVideos: scrapedVideos.length,
-        successfulVideos: scrapedVideos.length,
-        failedVideos: 0,
-        processingTime: 0,
-        videoData: {
-          create: scrapedVideos.map(video => {
-            // Extract video ID from URL
-            const videoId = video.video_url?.split('/video/')[1]?.split('?')[0] || 'unknown'
-            
-            // Parse upload date
-            let uploadDate = null
-            if (video.upload_date) {
-              try {
-                uploadDate = new Date(video.upload_date)
-              } catch (error) {
-                console.warn(`⚠️  Invalid upload date format: ${video.upload_date}`)
-              }
-            }
-            
-            console.log(`📹 Saving video: ${videoId}`)
-            console.log(`  📝 Description: "${video.description || 'N/A'}"`)
-            console.log(`  ⏱️  Duration: ${video.duration || 'N/A'}`)
-            console.log(`  📅 Upload Date: ${video.upload_date || 'N/A'}`)
-            console.log(`  🏷️  Hashtags: ${video.hashtags?.length || 0}`)
-            console.log(`  👤 Mentions: ${video.mentions?.length || 0}`)
-            console.log(`  💬 Comments: ${video.comments_list?.length || 0}`)
-            
-            return {
-              videoId: videoId,
-              url: video.video_url || '',
-              description: video.description || null,
-              likes: video.likes || 0,
-              shares: 0, // Not extracted by scraper
-              comments: video.comments || 0,
-              views: video.views || 0,
-              duration: video.duration || null,
-              uploadDate: uploadDate,
-              hashtags: video.hashtags || [],
-              mentions: video.mentions || [],
-              commentTexts: video.comments_list || []
-            }
-          })
-        }
-      },
-      include: {
-        queueItem: true,
-        videoData: true
-      }
-    })
-    
-    console.log(`✅ Successfully saved ${result.videoData.length} videos to database`)
-    
-    // Map result for API response
-    const mappedResult = this.mapResult(result)
-    
-    // Publish update
-    await publishUpdate({
-      type: 'result',
-      action: 'create',
-      data: mappedResult,
-      timestamp: Date.now()
-    })
-    
-    return mappedResult
+    // Import and use the new video data service
+    const { videoDataService } = await import('./video-data-service')
+    return await videoDataService.saveScrapedData(queueItemId, scrapedVideos)
   }
 
 
