@@ -123,7 +123,7 @@ export class VideoDataService {
       console.log(`\n   Video ${index + 1}:`)
       console.log(`     videoId: "${video.videoId}"`)
       console.log(`     url: "${video.url}"`)
-      console.log(`     description: "${video.description?.substring(0, 50)}${video.description?.length > 50 ? '...' : ''}"`)
+      console.log(`     description: "${video.description?.substring(0, 50)}${(video.description?.length ?? 0) > 50 ? '...' : ''}"`)
       console.log(`     views: ${video.views}`)
       console.log(`     likes: ${video.likes}`)
       console.log(`     comments: ${video.comments}`)
@@ -167,7 +167,7 @@ export class VideoDataService {
       console.log(`     Database ID: ${video.id}`)
       console.log(`     Video ID: ${video.videoId}`)
       console.log(`     URL: ${video.url}`)
-      console.log(`     Description: "${video.description?.substring(0, 50)}${video.description?.length > 50 ? '...' : ''}"`)
+      console.log(`     Description: "${video.description?.substring(0, 50)}${(video.description?.length ?? 0) > 50 ? '...' : ''}"`)
       console.log(`     Views: ${video.views}`)
       console.log(`     Likes: ${video.likes}`)
       console.log(`     Comments: ${video.comments}`)
@@ -244,7 +244,7 @@ export class VideoDataService {
       
       // Detailed logging of processed video data
       console.log(`  📊 PROCESSED DATA for ${videoId}:`)
-      console.log(`     📝 Description: "${processedVideo.description?.substring(0, 60)}${processedVideo.description?.length > 60 ? '...' : ''}"`)
+      console.log(`     📝 Description: "${processedVideo.description?.substring(0, 60)}${(processedVideo.description?.length ?? 0) > 60 ? '...' : ''}"`)
       console.log(`     📈 Metrics:`, {
         views: processedVideo.views,
         likes: processedVideo.likes,
