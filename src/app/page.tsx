@@ -117,7 +117,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
         <StatCard
           title="Queue Items"
           value={formatNumber(stats.totalInQueue)}
@@ -153,30 +153,10 @@ export default function Dashboard() {
             positive: true
           } : undefined}
         />
-        
-        <StatCard
-          title="Success Rate"
-          value={`${stats.successRate}%`}
-          icon={<ChartBarIcon className="h-6 w-6" />}
-          description="Task completion rate"
-          trend={stats.successRate >= 80 ? {
-            value: stats.successRate,
-            label: "excellent",
-            positive: true
-          } : stats.successRate >= 60 ? {
-            value: stats.successRate,
-            label: "good",
-            positive: true
-          } : {
-            value: stats.successRate,
-            label: "needs attention",
-            positive: false
-          }}
-        />
       </div>
 
       {/* Secondary Stats */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-8">
         <StatCard
           title="Pending Tasks"
           value={stats.pendingTasks}
@@ -199,13 +179,6 @@ export default function Dashboard() {
           icon={<ExclamationTriangleIcon className="h-6 w-6" />}
           description="Requires attention"
           className={stats.failedTasks > 0 ? "border-l-4 border-l-red-500" : ""}
-        />
-
-        <StatCard
-          title="System Uptime"
-          value={formatUptime(stats.uptime)}
-          icon={<PlayIcon className="h-6 w-6" />}
-          description="Time since startup"
         />
       </div>
 
