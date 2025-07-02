@@ -521,31 +521,7 @@ class TikTokWorker {
         });
       });
       
-      // Set timeout (5 minutes for scraping)
-      const timeout = setTimeout(() => {
-        console.log('⏰ Scraper timeout reached, killing process...');
-        scraperProcess.kill('SIGTERM');
-        
-        // Give it a few seconds to gracefully shut down, then force kill
-        setTimeout(() => {
-          try {
-            scraperProcess.kill('SIGKILL');
-            console.log('🔥 Force killed scraper process');
-          } catch (error) {
-            // Process might already be dead
-          }
-        }, 5000);
-        
-        resolve({
-          success: false,
-          error: 'Scraper process timed out after 5 minutes'
-        });
-      }, 300000); // 5 minutes timeout
-      
-      // Clear timeout when process ends
-      scraperProcess.on('close', () => {
-        clearTimeout(timeout);
-      });
+      // No timeout - allow unlimited processing time for large profiles
     });
   }
 
