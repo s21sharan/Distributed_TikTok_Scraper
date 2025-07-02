@@ -22,7 +22,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 import os
 
 # Configuration
-MAX_VIDEOS_TO_SCRAPE = 5  # Set to None for all videos, or a number like 5 for testing
+MAX_VIDEOS_TO_SCRAPE = None  # Set to None for all videos, or a number like 5 for testing
 
 def random_delay(min_seconds=1, max_seconds=3):
     """
