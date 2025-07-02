@@ -475,8 +475,211 @@ def scrape_tiktok_profile(url):
                 likes = "0"
                 bookmarks = "0" 
                 comments = "0"
+                upload_date = None
+                description = ""
+                hashtags = []
+                mentions = []
                 
-                print(f"   🔍 Extracting metrics from video page...")
+                print(f"   🔍 Extracting metrics and content from video page...")
+                
+                # Extract upload date using TikTok's data-e2e="browser-nickname" selector
+                try:
+                    print(f"   🔍 DEBUG: Looking for upload date...")
+                    # Look for the date in the browser-nickname span structure
+                    date_elements = driver.find_elements(By.CSS_SELECTOR, 'span[data-e2e="browser-nickname"]')
+                    print(f"   🔍 DEBUG: Found {len(date_elements)} browser-nickname elements")
+                    
+                    for i, date_element in enumerate(date_elements):
+                        # The date is usually in the last part after the " · " separator
+                        element_text = date_element.text.strip()
+                        print(f"   🔍 DEBUG: browser-nickname[{i}] text: '{element_text}'")
+                        
+                        if ' · ' in element_text:
+                            # Split by the separator and get the last part (the date)
+                            date_part = element_text.split(' · ')[-1].strip()
+                            print(f"   🔍 DEBUG: Extracted date part: '{date_part}'")
+                            
+                            if date_part and not date_part.startswith('@'):
+                                print(f"   🔍 DEBUG: Attempting to parse date: '{date_part}'")
+                                upload_date = parse_upload_date(date_part)
+                                if upload_date:
+                                    print(f"   📅 ✅ Found upload date: {date_part} → {upload_date}")
+                                    break
+                                else:
+                                    print(f"   🔍 DEBUG: Failed to parse date: '{date_part}'")
+                            else:
+                                print(f"   🔍 DEBUG: Skipping date part (empty or @mention): '{date_part}'")
+                    
+                    # If not found in browser-nickname, try alternative selectors
+                    if not upload_date:
+                        print(f"   🔍 DEBUG: No date found in browser-nickname, trying XPath selectors...")
+                        # Try to find date in other common TikTok date containers using XPath for text search
+                        try:
+                            # XPath to find spans containing "ago"
+                            date_elements = driver.find_elements(By.XPATH, "//span[contains(text(), 'ago')]")
+                            print(f"   🔍 DEBUG: Found {len(date_elements)} spans containing 'ago'")
+                            
+                            for i, elem in enumerate(date_elements):
+                                text = elem.text.strip()
+                                print(f"   🔍 DEBUG: XPath ago[{i}] text: '{text}'")
+                                if text:
+                                    upload_date = parse_upload_date(text)
+                                    if upload_date:
+                                        print(f"   📅 ✅ Found upload date (XPath ago): {text} → {upload_date}")
+                                        break
+                                    else:
+                                        print(f"   🔍 DEBUG: Failed to parse XPath ago date: '{text}'")
+                        except Exception as e:
+                            print(f"   🔍 DEBUG: XPath ago search failed: {e}")
+                            pass
+                        
+                        # Try XPath for date patterns like "4-25" or "2024-12-23"
+                        if not upload_date:
+                            print(f"   🔍 DEBUG: Trying XPath for date patterns with '-'...")
+                            try:
+                                date_elements = driver.find_elements(By.XPATH, "//span[contains(text(), '-')]")
+                                print(f"   🔍 DEBUG: Found {len(date_elements)} spans containing '-'")
+                                
+                                for i, elem in enumerate(date_elements):
+                                    text = elem.text.strip()
+                                    print(f"   🔍 DEBUG: XPath dash[{i}] text: '{text}'")
+                                    if text and (re.match(r'\d+-\d+', text) or re.match(r'\d{4}-\d+-\d+', text)):
+                                        print(f"   🔍 DEBUG: Text matches date pattern, attempting to parse: '{text}'")
+                                        upload_date = parse_upload_date(text)
+                                        if upload_date:
+                                            print(f"   📅 ✅ Found upload date (XPath date): {text} → {upload_date}")
+                                            break
+                                        else:
+                                            print(f"   🔍 DEBUG: Failed to parse XPath date: '{text}'")
+                                    else:
+                                        print(f"   🔍 DEBUG: Text doesn't match date pattern: '{text}'")
+                            except Exception as e:
+                                print(f"   🔍 DEBUG: XPath date search failed: {e}")
+                                pass
+                                
+                        # Try CSS selectors for data attributes
+                        if not upload_date:
+                            print(f"   🔍 DEBUG: Trying CSS selectors for date attributes...")
+                            try:
+                                css_selectors = ['[data-e2e*="date"]', '.date', 'time']
+                                for selector in css_selectors:
+                                    print(f"   🔍 DEBUG: Trying CSS selector: '{selector}'")
+                                    date_elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                                    print(f"   🔍 DEBUG: Found {len(date_elements)} elements with selector '{selector}'")
+                                    
+                                    for i, elem in enumerate(date_elements):
+                                        text = elem.text.strip()
+                                        print(f"   🔍 DEBUG: CSS[{selector}][{i}] text: '{text}'")
+                                        if text and ('ago' in text or re.match(r'\d+-\d+', text) or re.match(r'\d{4}-\d+-\d+', text)):
+                                            print(f"   🔍 DEBUG: Text matches criteria, attempting to parse: '{text}'")
+                                            upload_date = parse_upload_date(text)
+                                            if upload_date:
+                                                print(f"   📅 ✅ Found upload date (CSS): {text} → {upload_date}")
+                                                break
+                                            else:
+                                                print(f"   🔍 DEBUG: Failed to parse CSS date: '{text}'")
+                                        else:
+                                            print(f"   🔍 DEBUG: Text doesn't match criteria: '{text}'")
+                                    if upload_date:
+                                        break
+                            except Exception as e:
+                                print(f"   🔍 DEBUG: CSS selector search failed: {e}")
+                                pass
+                                
+                    if not upload_date:
+                        print(f"   ⚠️  DEBUG: No upload date found after trying all methods")
+                        
+                except Exception as e:
+                    print(f"   ❌ DEBUG: Error extracting upload date: {e}")
+                
+                # Extract video description
+                print(f"   🔍 DEBUG: Looking for video description...")
+                try:
+                    print(f"   🔍 DEBUG: Trying primary selector: span[data-e2e='new-desc-span']")
+                    desc_element = driver.find_element(By.CSS_SELECTOR, 'span[data-e2e="new-desc-span"]')
+                    description = desc_element.text.strip()
+                    print(f"   📝 ✅ Found description: {description[:100]}{'...' if len(description) > 100 else ''}")
+                    print(f"   🔍 DEBUG: Full description: '{description}'")
+                except Exception as e:
+                    print(f"   🔍 DEBUG: Primary selector failed: {e}")
+                    try:
+                        # Fallback selectors for description
+                        alt_desc_selectors = [
+                            'span[data-e2e*="desc"]',
+                            '.video-meta-description',
+                            '[data-e2e="video-desc"]'
+                        ]
+                        print(f"   🔍 DEBUG: Trying {len(alt_desc_selectors)} fallback selectors...")
+                        
+                        for i, selector in enumerate(alt_desc_selectors):
+                            try:
+                                print(f"   🔍 DEBUG: Trying fallback[{i}]: '{selector}'")
+                                desc_element = driver.find_element(By.CSS_SELECTOR, selector)
+                                description = desc_element.text.strip()
+                                print(f"   📝 ✅ Found description (fallback): {description[:100]}{'...' if len(description) > 100 else ''}")
+                                print(f"   🔍 DEBUG: Full description: '{description}'")
+                                break
+                            except Exception as fallback_error:
+                                print(f"   🔍 DEBUG: Fallback[{i}] failed: {fallback_error}")
+                                continue
+                    except Exception as e2:
+                        print(f"   🔍 DEBUG: All fallback selectors failed: {e2}")
+                        print(f"   ⚠️  DEBUG: No description found after trying all methods")
+                
+                # Extract hashtags and mentions from links
+                print(f"   🔍 DEBUG: Looking for hashtags and mentions...")
+                try:
+                    # Find all search-common-link elements
+                    print(f"   🔍 DEBUG: Searching for elements with selector: a[data-e2e='search-common-link']")
+                    link_elements = driver.find_elements(By.CSS_SELECTOR, 'a[data-e2e="search-common-link"]')
+                    print(f"   🔍 DEBUG: Found {len(link_elements)} search-common-link elements")
+                    
+                    for i, link in enumerate(link_elements):
+                        try:
+                            href = link.get_attribute('href')
+                            text = link.text.strip()
+                            print(f"   🔍 DEBUG: Link[{i}] - href: '{href}', text: '{text}'")
+                            
+                            if href and text:
+                                # Check if it's a hashtag (links to /tag/...)
+                                if '/tag/' in href and text.startswith('#'):
+                                    hashtag = text.replace('#', '').strip()
+                                    print(f"   🔍 DEBUG: Found hashtag link - extracted: '{hashtag}'")
+                                    if hashtag and hashtag not in hashtags:
+                                        hashtags.append(hashtag)
+                                        print(f"   🏷️  ✅ Added hashtag: '{hashtag}'")
+                                    else:
+                                        print(f"   🔍 DEBUG: Skipping hashtag (empty or duplicate): '{hashtag}'")
+                                
+                                # Check if it's a mention (links to /@...)
+                                elif '/@' in href and text.startswith('@'):
+                                    mention = text.replace('@', '').strip()
+                                    print(f"   🔍 DEBUG: Found mention link - extracted: '{mention}'")
+                                    if mention and mention not in mentions:
+                                        mentions.append(mention)
+                                        print(f"   👤 ✅ Added mention: '{mention}'")
+                                    else:
+                                        print(f"   🔍 DEBUG: Skipping mention (empty or duplicate): '{mention}'")
+                                else:
+                                    print(f"   🔍 DEBUG: Link doesn't match hashtag or mention pattern")
+                            else:
+                                print(f"   🔍 DEBUG: Link missing href or text")
+                        except Exception as link_error:
+                            print(f"   🔍 DEBUG: Error processing link[{i}]: {link_error}")
+                            continue
+                    
+                    print(f"   🔍 DEBUG: Final results - Hashtags: {hashtags}, Mentions: {mentions}")
+                    
+                    if hashtags:
+                        print(f"   🏷️  ✅ Found hashtags: {hashtags}")
+                    if mentions:
+                        print(f"   👤 ✅ Found mentions: {mentions}")
+                        
+                    if not hashtags and not mentions:
+                        print(f"   ⚠️  DEBUG: No hashtags or mentions found after processing all links")
+                        
+                except Exception as e:
+                    print(f"   ❌ DEBUG: Error extracting hashtags/mentions: {e}")
                 
                 # Use TikTok's exact selectors for individual video page metrics
                 # These selectors are based on the actual TikTok HTML structure
@@ -566,6 +769,10 @@ def scrape_tiktok_profile(url):
                     'likes_raw': likes,
                     'bookmarks_raw': bookmarks,
                     'comments_raw': comments,
+                    'upload_date': upload_date,
+                    'description': description,
+                    'hashtags': hashtags,
+                    'mentions': mentions,
                     'scraped_at': datetime.now().isoformat()
                 }
                 
@@ -575,6 +782,14 @@ def scrape_tiktok_profile(url):
                 print(f"   ❤️  Likes: {likes} ({parsed_likes:,})")
                 print(f"   🔖 Bookmarks: {bookmarks} ({parsed_bookmarks:,})")
                 print(f"   💬 Comments: {comments} ({parsed_comments:,})")
+                if upload_date:
+                    print(f"   📅 Upload Date: {upload_date}")
+                if description:
+                    print(f"   📝 Description: {description[:80]}{'...' if len(description) > 80 else ''}")
+                if hashtags:
+                    print(f"   🏷️  Hashtags: {hashtags}")
+                if mentions:
+                    print(f"   👤 Mentions: {mentions}")
                 
                 # Go back to profile
                 driver.back()
