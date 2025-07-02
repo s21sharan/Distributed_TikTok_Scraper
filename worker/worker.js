@@ -200,21 +200,9 @@ class TikTokWorker {
     console.log(`Processing task: ${task.url}`);
 
     try {
-      // Mark task as processing
-      try {
-        await axios.put(`${this.apiBaseUrl}/api/queue`, {
-          id: taskId,
-          action: 'start',
-          workerId: this.databaseId
-        }, {
-          headers: this.getAuthHeaders()
-        });
-        console.log(`Successfully marked task ${taskId} as processing`);
-      } catch (apiError) {
-        console.error(`Failed to mark task ${taskId} as processing:`, apiError.response?.status, apiError.response?.data);
-        // Continue anyway - the task might already be marked as processing
-      }
-
+      // Task is already marked as processing by the queue claiming system
+      console.log(`🔄 Starting to process task ${taskId}: ${task.url}`);
+      
       // Run the TikTok scraper
       const result = await this.runScraper(task.url);
       
