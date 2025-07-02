@@ -1638,6 +1638,8 @@ def scrape_videos_from_containers(driver, video_containers, wait):
                 'description': description,
                 'hashtags': hashtags,
                 'mentions': mentions,
+                'comments_list': comments_list,
+                'duration': duration,
                 'scraped_at': datetime.now().isoformat()
             }
             
@@ -1647,6 +1649,8 @@ def scrape_videos_from_containers(driver, video_containers, wait):
             print(f"   ❤️  Likes: {likes} ({parsed_likes:,})")
             print(f"   🔖 Bookmarks: {bookmarks} ({parsed_bookmarks:,})")
             print(f"   💬 Comments: {comments} ({parsed_comments:,})")
+            if duration:
+                print(f"   ⏱️  Duration: {duration}")
             if upload_date:
                 print(f"   📅 Upload Date: {upload_date}")
             if description:
@@ -1655,6 +1659,14 @@ def scrape_videos_from_containers(driver, video_containers, wait):
                 print(f"   🏷️  Hashtags: {hashtags}")
             if mentions:
                 print(f"   👤 Mentions: {mentions}")
+            if comments_list:
+                print(f"   💬 Comments: {len(comments_list)} extracted")
+                # Show preview of first 3 comments
+                for i, comment in enumerate(comments_list[:3]):
+                    preview = comment[:80] + ('...' if len(comment) > 80 else '')
+                    print(f"   💬 [{i+1}] \"{preview}\"")
+                if len(comments_list) > 3:
+                    print(f"   💬 ... and {len(comments_list) - 3} more comments")
             
             # Go back to profile
             driver.back()
