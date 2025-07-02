@@ -83,11 +83,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`💾 Saving ${videoData.length} video results for queue item ${queueItemId}`)
+    console.log(`🔍 Processing raw scraper output with ${videoData.length} items for queue item ${queueItemId}`)
     
-    const result = await databaseStore.saveResults(queueItemId, videoData)
+    // Debug: Log first video data to see what fields are being received
+    if (videoData.length > 0) {
+      console.log('🔍 DEBUG: First raw video data received:', {
+        keys: Object.keys(videoData[0]),
+        video_url: videoData[0].video_url,
+        views: videoData[0].views,
+        views_raw: videoData[0].views_raw,
+        description: videoData[0].description?.substring(0, 50) + '...',
+        hashtags: videoData[0].hashtags?.length || 0,
+        mentions: videoData[0].mentions?.length || 0,
+        comments_list: videoData[0].comments_list?.length || 0
+      })
+    }
     
-    console.log('✅ Results saved successfully:', {
+    // Use the new scraper parser to process and save the data
+    const { processTikTokScraperOutput } = await import('@/lib/scraper-parser')
+    const result = await processTikTokScraperOutput(queueItemId, videoData)
+    
+    console.log('✅ Results processed and saved successfully:', {
       resultId: result.id,
       totalVideos: result.totalVideos,
       username: result.username

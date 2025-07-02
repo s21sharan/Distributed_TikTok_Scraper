@@ -49,6 +49,7 @@ export interface VideoData {
   uploadDate?: string
   hashtags: string[]
   mentions: string[]
+  commentTexts: string[]
 }
 
 export interface SystemStats {

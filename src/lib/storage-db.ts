@@ -351,94 +351,13 @@ export class DatabaseStore {
     return results.map(this.mapResult)
   }
 
-  async saveResults(queueItemId: string, videoData: any[]): Promise<ScrapingResult> {
-    // Get the queue item to extract URL and other info
-    const queueItem = await prisma.queueItem.findUnique({ 
-      where: { id: queueItemId } 
-    })
-    
-    if (!queueItem) {
-      throw new Error(`Queue item not found: ${queueItemId}`)
-    }
-
-    // Extract username from URL
-    const urlMatch = queueItem.url.match(/@([^\/\?]+)/)
-    const username = urlMatch ? urlMatch[1] : 'unknown'
-
-    // Convert the scraped video data to the expected format
-    const convertedVideoData = videoData.map(video => ({
-      videoId: video.video_url?.split('/video/')[1]?.split('?')[0] || 'unknown',
-      url: video.video_url || '',
-      description: '', // Not available in current scraper output
-      likes: video.likes || 0,
-      shares: 0, // Not available in current scraper output
-      comments: video.comments || 0,
-      views: video.views || 0,
-      duration: undefined, // Not available in current scraper output
-      uploadDate: undefined, // Not available in current scraper output
-      hashtags: [], // Not available in current scraper output
-      mentions: [] // Not available in current scraper output
-    }))
-
-    const result = {
-      queueItemId,
-      url: queueItem.url,
-      username,
-      totalVideos: videoData.length,
-      successfulVideos: videoData.length,
-      failedVideos: 0,
-      csvFilePath: undefined, // CSV is handled separately if needed
-      processingTime: 0, // Could be calculated from queue item timestamps
-      completedAt: new Date().toISOString(),
-      videoData: convertedVideoData
-    }
-
-    return this.addResult(result)
+  async saveResults(queueItemId: string, scrapedVideos: any[]): Promise<ScrapingResult> {
+    // Import and use the new video data service
+    const { videoDataService } = await import('./video-data-service')
+    return await videoDataService.saveScrapedData(queueItemId, scrapedVideos)
   }
 
-  async addResult(result: Omit<ScrapingResult, 'id'>): Promise<ScrapingResult> {
-    const newResult = await prisma.scrapingResult.create({
-      data: {
-        queueItemId: result.queueItemId,
-        url: result.url,
-        username: result.username,
-        totalVideos: result.totalVideos,
-        successfulVideos: result.successfulVideos,
-        failedVideos: result.failedVideos,
-        csvFilePath: result.csvFilePath,
-        processingTime: result.processingTime,
-        videoData: {
-          create: result.videoData?.map(video => ({
-            videoId: video.videoId,
-            url: video.url,
-            description: video.description,
-            likes: video.likes,
-            shares: video.shares,
-            comments: video.comments,
-            views: video.views,
-            duration: video.duration,
-            uploadDate: video.uploadDate ? new Date(video.uploadDate) : null,
-            hashtags: video.hashtags,
-            mentions: video.mentions
-          })) || []
-        }
-      },
-      include: {
-        queueItem: true,
-        videoData: true
-      }
-    })
-    
-    const resultData = this.mapResult(newResult)
-    await publishUpdate({
-      type: 'result',
-      action: 'create',
-      data: resultData,
-      timestamp: Date.now()
-    })
-    
-    return resultData
-  }
+
 
   // Statistics
   async getStats(): Promise<SystemStats> {
@@ -532,7 +451,8 @@ export class DatabaseStore {
         duration: video.duration,
         uploadDate: video.uploadDate?.toISOString(),
         hashtags: video.hashtags,
-        mentions: video.mentions
+        mentions: video.mentions,
+        commentTexts: video.commentTexts
       })) || []
     }
   }
