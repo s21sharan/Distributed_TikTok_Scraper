@@ -76,6 +76,7 @@ model VideoData {
   uploadDate   DateTime?
   hashtags     String[]
   mentions     String[]
+  commentTexts String[]
   createdAt    DateTime       @default(now())
   
   @@map("video_data")

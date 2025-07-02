@@ -377,7 +377,8 @@ export class DatabaseStore {
       duration: undefined, // Not available in current scraper output
       uploadDate: video.upload_date || undefined, // Now available from scraper output
       hashtags: video.hashtags || [], // Now available from scraper output
-      mentions: video.mentions || [] // Now available from scraper output
+      mentions: video.mentions || [], // Now available from scraper output
+      commentTexts: video.comments_list || [] // Now available from scraper output
     }))
 
     const result = {
@@ -419,7 +420,8 @@ export class DatabaseStore {
             duration: video.duration,
             uploadDate: video.uploadDate ? new Date(video.uploadDate) : null,
             hashtags: video.hashtags,
-            mentions: video.mentions
+            mentions: video.mentions,
+            commentTexts: video.commentTexts
           })) || []
         }
       },
@@ -532,7 +534,8 @@ export class DatabaseStore {
         duration: video.duration,
         uploadDate: video.uploadDate?.toISOString(),
         hashtags: video.hashtags,
-        mentions: video.mentions
+        mentions: video.mentions,
+        commentTexts: video.commentTexts
       })) || []
     }
   }

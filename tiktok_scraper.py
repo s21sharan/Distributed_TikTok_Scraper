@@ -479,6 +479,7 @@ def scrape_tiktok_profile(url):
                 description = ""
                 hashtags = []
                 mentions = []
+                comments_list = []
                 
                 print(f"   🔍 Extracting metrics and content from video page...")
                 
@@ -681,6 +682,57 @@ def scrape_tiktok_profile(url):
                 except Exception as e:
                     print(f"   ❌ DEBUG: Error extracting hashtags/mentions: {e}")
                 
+                # Extract top 10 comments
+                try:
+                    # Find comment elements using TikTok's comment selectors
+                    comment_elements = driver.find_elements(By.CSS_SELECTOR, 'p[data-e2e="comment-level-1"]')
+                    
+                    # Extract up to 10 comments
+                    max_comments = min(10, len(comment_elements))
+                    
+                    for i in range(max_comments):
+                        try:
+                            comment_element = comment_elements[i]
+                            # Get the comment text from the span inside the paragraph
+                            comment_span = comment_element.find_element(By.CSS_SELECTOR, 'span[dir]')
+                            comment_text = comment_span.text.strip()
+                            
+                            if comment_text:
+                                comments_list.append(comment_text)
+                                
+                        except Exception as comment_error:
+                            continue
+                        
+                except Exception as e:
+                    # Try alternative comment selectors
+                    try:
+                        alt_comment_selectors = [
+                            '[data-e2e*="comment-level"]',
+                            '.comment-text',
+                            '[class*="CommentText"]'
+                        ]
+                        
+                        for selector in alt_comment_selectors:
+                            try:
+                                alt_elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                                
+                                if alt_elements:
+                                    for i, elem in enumerate(alt_elements[:10]):
+                                        try:
+                                            text = elem.text.strip()
+                                            if text and len(text) > 5:  # Filter out very short text
+                                                comments_list.append(text)
+                                        except:
+                                            continue
+                                    
+                                    if comments_list:
+                                        break
+                            except Exception as selector_error:
+                                continue
+                                
+                    except Exception as alt_error:
+                        pass
+                
                 # Use TikTok's exact selectors for individual video page metrics
                 # These selectors are based on the actual TikTok HTML structure
                 
@@ -773,6 +825,7 @@ def scrape_tiktok_profile(url):
                     'description': description,
                     'hashtags': hashtags,
                     'mentions': mentions,
+                    'comments_list': comments_list,
                     'scraped_at': datetime.now().isoformat()
                 }
                 
@@ -790,6 +843,14 @@ def scrape_tiktok_profile(url):
                     print(f"   🏷️  Hashtags: {hashtags}")
                 if mentions:
                     print(f"   👤 Mentions: {mentions}")
+                if comments_list:
+                    print(f"   💬 Comments: {len(comments_list)} extracted")
+                    # Show preview of first 3 comments
+                    for i, comment in enumerate(comments_list[:3]):
+                        preview = comment[:80] + ('...' if len(comment) > 80 else '')
+                        print(f"   💬 [{i+1}] \"{preview}\"")
+                    if len(comments_list) > 3:
+                        print(f"   💬 ... and {len(comments_list) - 3} more comments")
                 
                 # Go back to profile
                 driver.back()
