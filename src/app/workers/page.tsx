@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { PlayIcon, PauseIcon, StopIcon, CpuChipIcon } from '@heroicons/react/24/outline'
+import { PlayIcon, PauseIcon, StopIcon, CpuChipIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 interface Worker {
   id: string
@@ -51,9 +51,35 @@ export default function WorkersPage() {
     }
   }
 
+  const removeWorker = async (workerId: string, workerStatus: string) => {
+    // Only allow removal of idle workers
+    if (workerStatus !== 'idle') {
+      alert('Only idle workers can be removed. Stop the worker first.')
+      return
+    }
 
+    if (!confirm('Are you sure you want to remove this idle worker from the database?')) return
 
-
+    try {
+      const response = await fetch(`/api/workers?id=${workerId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer supersecretkey123`
+        }
+      })
+      
+      if (response.ok) {
+        fetchWorkers() // Refresh workers list
+        alert('Worker removed successfully')
+      } else {
+        const error = await response.text()
+        alert(`Failed to remove worker: ${error}`)
+      }
+    } catch (error) {
+      console.error('Failed to remove worker:', error)
+      alert('Failed to remove worker')
+    }
+  }
 
   useEffect(() => {
     fetchWorkers()
@@ -255,6 +281,16 @@ export default function WorkersPage() {
                   >
                     <StopIcon className="h-4 w-4" />
                     Stop
+                  </button>
+                )}
+                
+                {worker.status === 'idle' && (
+                  <button
+                    onClick={() => removeWorker(worker.id, worker.status)}
+                    className="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 flex items-center justify-center gap-1"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                    Remove
                   </button>
                 )}
                 
