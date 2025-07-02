@@ -50,6 +50,7 @@ export interface VideoData {
   hashtags: string[]
   mentions: string[]
   commentTexts: string[]
+  duration?: string
 }
 
 export interface SystemStats {

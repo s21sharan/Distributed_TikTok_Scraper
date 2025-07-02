@@ -374,11 +374,11 @@ export class DatabaseStore {
       shares: 0, // Not available in current scraper output
       comments: video.comments || 0,
       views: video.views || 0,
-      duration: undefined, // Not available in current scraper output
       uploadDate: video.upload_date || undefined, // Now available from scraper output
       hashtags: video.hashtags || [], // Now available from scraper output
       mentions: video.mentions || [], // Now available from scraper output
-      commentTexts: video.comments_list || [] // Now available from scraper output
+      commentTexts: video.comments_list || [], // Now available from scraper output
+      duration: video.duration || undefined // Now available from scraper output
     }))
 
     const result = {
