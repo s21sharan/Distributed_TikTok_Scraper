@@ -351,8 +351,11 @@ export class DatabaseStore {
     return results.map(this.mapResult)
   }
 
-  async saveResults(queueItemId: string, videoData: any[]): Promise<ScrapingResult> {
-    // Get the queue item to extract URL and other info
+  async saveResults(queueItemId: string, scrapedVideos: any[]): Promise<ScrapingResult> {
+    console.log('💾 Saving scraper results to database...')
+    console.log(`📊 Processing ${scrapedVideos.length} videos for queue item: ${queueItemId}`)
+    
+    // Get queue item info
     const queueItem = await prisma.queueItem.findUnique({ 
       where: { id: queueItemId } 
     })
@@ -364,92 +367,57 @@ export class DatabaseStore {
     // Extract username from URL
     const urlMatch = queueItem.url.match(/@([^\/\?]+)/)
     const username = urlMatch ? urlMatch[1] : 'unknown'
+    
+    console.log(`👤 Profile: @${username}`)
 
-    // Convert the scraped video data to the expected format
-    const convertedVideoData = videoData.map(video => {
-      const converted = {
-        videoId: video.video_url?.split('/video/')[1]?.split('?')[0] || 'unknown',
-        url: video.video_url || '',
-        description: video.description || '', // Now available from scraper output
-        likes: video.likes || 0,
-        shares: 0, // Not available in current scraper output
-        comments: video.comments || 0,
-        views: video.views || 0,
-        uploadDate: video.upload_date || undefined, // Now available from scraper output
-        hashtags: video.hashtags || [], // Now available from scraper output
-        mentions: video.mentions || [], // Now available from scraper output
-        commentTexts: video.comments_list || [], // Now available from scraper output
-        duration: video.duration || undefined // Now available from scraper output
-      }
-      
-      // Debug: Log conversion for first video
-      if (videoData.indexOf(video) === 0) {
-        console.log('🔍 DEBUG: Converting video data:', {
-          originalKeys: Object.keys(video),
-          original: {
-            description: video.description,
-            duration: video.duration,
-            upload_date: video.upload_date,
-            hashtags: video.hashtags,
-            mentions: video.mentions,
-            comments_list: video.comments_list?.length || 0
-          },
-          converted: {
-            description: converted.description,
-            duration: converted.duration,
-            uploadDate: converted.uploadDate,
-            hashtags: converted.hashtags,
-            mentions: converted.mentions,
-            commentTexts: converted.commentTexts?.length || 0
-          }
-        })
-      }
-      
-      return converted
-    })
-
-    const result = {
-      queueItemId,
-      url: queueItem.url,
-      username,
-      totalVideos: videoData.length,
-      successfulVideos: videoData.length,
-      failedVideos: 0,
-      csvFilePath: undefined, // CSV is handled separately if needed
-      processingTime: 0, // Could be calculated from queue item timestamps
-      completedAt: new Date().toISOString(),
-      videoData: convertedVideoData
-    }
-
-    return this.addResult(result)
-  }
-
-  async addResult(result: Omit<ScrapingResult, 'id'>): Promise<ScrapingResult> {
-    const newResult = await prisma.scrapingResult.create({
+    // Create the scraping result with video data
+    const result = await prisma.scrapingResult.create({
       data: {
-        queueItemId: result.queueItemId,
-        url: result.url,
-        username: result.username,
-        totalVideos: result.totalVideos,
-        successfulVideos: result.successfulVideos,
-        failedVideos: result.failedVideos,
-        csvFilePath: result.csvFilePath,
-        processingTime: result.processingTime,
+        queueItemId: queueItemId,
+        url: queueItem.url,
+        username: username,
+        totalVideos: scrapedVideos.length,
+        successfulVideos: scrapedVideos.length,
+        failedVideos: 0,
+        processingTime: 0,
         videoData: {
-          create: result.videoData?.map(video => ({
-            videoId: video.videoId,
-            url: video.url,
-            description: video.description,
-            likes: video.likes,
-            shares: video.shares,
-            comments: video.comments,
-            views: video.views,
-            duration: video.duration,
-            uploadDate: video.uploadDate ? new Date(video.uploadDate) : null,
-            hashtags: video.hashtags,
-            mentions: video.mentions,
-            commentTexts: video.commentTexts
-          })) || []
+          create: scrapedVideos.map(video => {
+            // Extract video ID from URL
+            const videoId = video.video_url?.split('/video/')[1]?.split('?')[0] || 'unknown'
+            
+            // Parse upload date
+            let uploadDate = null
+            if (video.upload_date) {
+              try {
+                uploadDate = new Date(video.upload_date)
+              } catch (error) {
+                console.warn(`⚠️  Invalid upload date format: ${video.upload_date}`)
+              }
+            }
+            
+            console.log(`📹 Saving video: ${videoId}`)
+            console.log(`  📝 Description: "${video.description || 'N/A'}"`)
+            console.log(`  ⏱️  Duration: ${video.duration || 'N/A'}`)
+            console.log(`  📅 Upload Date: ${video.upload_date || 'N/A'}`)
+            console.log(`  🏷️  Hashtags: ${video.hashtags?.length || 0}`)
+            console.log(`  👤 Mentions: ${video.mentions?.length || 0}`)
+            console.log(`  💬 Comments: ${video.comments_list?.length || 0}`)
+            
+            return {
+              videoId: videoId,
+              url: video.video_url || '',
+              description: video.description || null,
+              likes: video.likes || 0,
+              shares: 0, // Not extracted by scraper
+              comments: video.comments || 0,
+              views: video.views || 0,
+              duration: video.duration || null,
+              uploadDate: uploadDate,
+              hashtags: video.hashtags || [],
+              mentions: video.mentions || [],
+              commentTexts: video.comments_list || []
+            }
+          })
         }
       },
       include: {
@@ -458,16 +426,23 @@ export class DatabaseStore {
       }
     })
     
-    const resultData = this.mapResult(newResult)
+    console.log(`✅ Successfully saved ${result.videoData.length} videos to database`)
+    
+    // Map result for API response
+    const mappedResult = this.mapResult(result)
+    
+    // Publish update
     await publishUpdate({
       type: 'result',
       action: 'create',
-      data: resultData,
+      data: mappedResult,
       timestamp: Date.now()
     })
     
-    return resultData
+    return mappedResult
   }
+
+
 
   // Statistics
   async getStats(): Promise<SystemStats> {
