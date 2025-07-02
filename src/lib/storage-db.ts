@@ -67,6 +67,12 @@ export class DatabaseStore {
         include: { worker: true }
       })
       
+      // Release Redis lock when task is completed or failed
+      const finalStatus = updates.status?.toLowerCase()
+      if (finalStatus === 'completed' || finalStatus === 'failed') {
+        await this.releaseTaskLock(id)
+      }
+      
       const queueItem = this.mapQueueItem(item)
       await publishUpdate({
         type: 'queue',
@@ -79,6 +85,54 @@ export class DatabaseStore {
     } catch (error) {
       console.error('Failed to update queue item:', error)
       return null
+    }
+  }
+
+  async releaseTaskLock(taskId: string): Promise<void> {
+    try {
+      const lockKey = `task_lock:${taskId}`
+      const result = await redis.del(lockKey)
+      if (result > 0) {
+        console.log(`🔓 Released lock for task ${taskId}`)
+      }
+    } catch (error) {
+      console.error(`Failed to release lock for task ${taskId}:`, error)
+    }
+  }
+
+  async cleanupOrphanedLocks(): Promise<number> {
+    try {
+      // Find all Redis task locks
+      const lockKeys = await redis.keys('task_lock:*')
+      let cleaned = 0
+
+      for (const lockKey of lockKeys) {
+        const taskId = lockKey.replace('task_lock:', '')
+        
+        // Check if the task still exists and is processing
+        const task = await prisma.queueItem.findUnique({
+          where: { id: taskId },
+          select: { status: true }
+        })
+
+        // If task doesn't exist or is not processing, release the lock
+        if (!task || task.status !== 'PROCESSING') {
+          const result = await redis.del(lockKey)
+          if (result > 0) {
+            console.log(`🧹 Cleaned orphaned lock for task ${taskId}`)
+            cleaned++
+          }
+        }
+      }
+
+      if (cleaned > 0) {
+        console.log(`🧹 Cleanup complete: removed ${cleaned} orphaned locks`)
+      }
+      
+      return cleaned
+    } catch (error) {
+      console.error('Failed to cleanup orphaned locks:', error)
+      return 0
     }
   }
 
@@ -118,13 +172,67 @@ export class DatabaseStore {
   }
 
   async getNextPendingItem(): Promise<QueueItem | null> {
-    const item = await prisma.queueItem.findFirst({
+    // Get all pending items to try claiming them atomically
+    const pendingItems = await prisma.queueItem.findMany({
       where: { status: 'PENDING' },
       orderBy: { addedAt: 'asc' },
+      take: 10, // Try up to 10 pending items to find one we can claim
       include: { worker: true }
     })
-    
-    return item ? this.mapQueueItem(item) : null
+
+    if (pendingItems.length === 0) {
+      return null
+    }
+
+    // Try to atomically claim each pending item using Redis distributed lock
+    for (const item of pendingItems) {
+      const lockKey = `task_lock:${item.id}`
+      const lockValue = `worker_${Date.now()}_${Math.random()}`
+      
+      try {
+        // Try to acquire distributed lock with 10 minute expiration
+        const lockAcquired = await redis.set(lockKey, lockValue, 'PX', 600000, 'NX')
+        
+        if (lockAcquired === 'OK') {
+          console.log(`🔒 Worker acquired lock for task ${item.id}: ${item.url}`)
+          
+          // Double-check the item is still pending and update it to processing
+          try {
+            const updatedItem = await prisma.queueItem.update({
+              where: { 
+                id: item.id,
+                status: 'PENDING' // Only update if still pending
+              },
+              data: { 
+                status: 'PROCESSING',
+                startedAt: new Date()
+              },
+              include: { worker: true }
+            })
+            
+            console.log(`✅ Successfully claimed and marked task ${item.id} as processing`)
+            return this.mapQueueItem(updatedItem)
+            
+          } catch (updateError) {
+            // Failed to update (probably already taken), release the lock and try next
+            console.log(`⚠️ Failed to update task ${item.id}, releasing lock and trying next`)
+            await redis.del(lockKey)
+            continue
+          }
+        } else {
+          // Lock not acquired, task is being processed by another worker
+          console.log(`🔒 Task ${item.id} is locked by another worker, trying next`)
+          continue
+        }
+      } catch (redisError) {
+        console.error(`Redis error while trying to lock task ${item.id}:`, redisError)
+        continue
+      }
+    }
+
+    // No tasks could be claimed
+    console.log('📭 No pending tasks available for claiming')
+    return null
   }
 
   // Worker management

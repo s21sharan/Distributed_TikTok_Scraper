@@ -3,11 +3,10 @@
 # TikTok Worker Start Script
 echo "🚀 Starting TikTok Worker..."
 
-# Set environment variables for local development
-export API_BASE_URL="http://localhost:3000"
+# Set environment variables for development
+export API_BASE_URL="https://tiktok-music-trends-kard.vercel.app"
 export API_SECRET_KEY="supersecretkey123"
-export REDIS_HOST="localhost"
-export REDIS_PORT="6379"
+export REDIS_URL="redis://default:omMwvgbIPfLKXHzzrHiegbJDrXigwtRF@trolley.proxy.rlwy.net:25520"
 export WORKER_NAME="Worker-$(hostname)-$$"
 export WORKER_HOST="$(hostname)"
 export MAX_CONCURRENT_TASKS="3"
@@ -16,7 +15,7 @@ echo "Configuration:"
 echo "  API_BASE_URL: $API_BASE_URL"
 echo "  WORKER_NAME: $WORKER_NAME"
 echo "  WORKER_HOST: $WORKER_HOST"
-echo "  REDIS_HOST: $REDIS_HOST"
+echo "  REDIS_URL: $REDIS_URL"
 echo ""
 
 # Check if Node.js dependencies are installed
